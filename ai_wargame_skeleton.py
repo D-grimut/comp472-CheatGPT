@@ -309,6 +309,9 @@ class Game:
             target.mod_health(health_delta)
             self.remove_dead(coord)
 
+    """TODO: validate adjecency -> any peice can only move to an adjacent location (use build in function)"""
+    """TODO: validate pice movement -> for specific pieces of specific player, make a validation function (one for defender, one for attacker)
+                validating the movement of AI, Firewal, Program (recall that Tech and Virus can move everywhere for both players)"""
     def is_valid_move(self, coords : CoordPair) -> bool:
         """Validate a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
