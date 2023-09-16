@@ -353,11 +353,6 @@ class Game:
         if coords.dst not in coords.src.iter_adjacent():
             return False
 
-        # check if in combat
-        if self.check_combat(coords.src):
-            print (unit.health)
-            # return False
-
         unit = self.get(coords.dst)
         return unit is None
 
@@ -369,22 +364,47 @@ class Game:
             unit = self.get(adj)
             # if piece is not empty and not ours, combat
             if unit is not None and unit.player != self.next_player:
-                # return True
-                self.combat_sequence(adj, coord)
-                # print(adj)
+                return True
         # if not no combat
         return False
     
-    def combat_sequence(self, coord: Coord, src: Coord):
-        unit = self.get(coord)
-        srcUnit = self.get(src)
+    def combat_sequence(self, target: Unit, src: Unit, targ_coord: Coord, source_coord: Coord):
+        dmgInfl = src.damage_amount(target)
+        dmgTaken = target.damage_amount(src)
 
-        dmgInfl = srcUnit.damage_amount(unit)
-        
-        unit.mod_health(dmgInfl)
+        target.mod_health(-dmgInfl)
+        src.mod_health(-dmgTaken)
+        print(f'{src.to_string}')
+        print(f'{target.to_string}')
+
+        if target.health <= 0:
+            self.remove_dead(targ_coord)
+
+        if src.health <= 0:
+            self.remove_dead(source_coord)
+            
 
     def perform_move(self, coords: CoordPair) -> Tuple[bool, str]:
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
+        unit_src = self.get(coords.src)
+
+        #add no combat repair friendly case (repair when you can move)
+
+        if unit_src is not None and unit_src.type not in [UnitType.Tech, UnitType.Virus] and self.check_combat(coords.src):
+        
+            target =  self.get(coords.dst)
+
+            if target is not None and target.player != self.next_player:
+                self.combat_sequence(target, unit_src, coords.dst, coords.src)
+                return (True, "")
+            
+            elif target is not None and target.player == self.next_player:
+                #repar
+                return (True, "")
+            
+            else:
+                return (False, "invalid move") 
+
         if self.is_valid_move(coords):
             self.set(coords.dst, self.get(coords.src))
             self.set(coords.src, None)
