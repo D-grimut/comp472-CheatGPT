@@ -313,12 +313,16 @@ class Game:
     """TODO: validate pice movement -> for specific pieces of specific player, make a validation function (one for defender, one for attacker)
                 validating the movement of AI, Firewal, Program (recall that Tech and Virus can move everywhere for both players)"""
     def is_valid_move(self, coords : CoordPair) -> bool:
-        """Validate a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
+        """Validate a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""        
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
             return False
         unit = self.get(coords.src)
         if unit is None or unit.player != self.next_player:
             return False
+        
+        if coords.dst not in coords.src.iter_adjacent():
+            return False
+        
         unit = self.get(coords.dst)
         return (unit is None)
 
