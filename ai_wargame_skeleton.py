@@ -309,19 +309,49 @@ class Game:
             target.mod_health(health_delta)
             self.remove_dead(coord)
 
-    """TODO: validate adjecency -> any peice can only move to an adjacent location (use build in function)"""
-    """TODO: validate pice movement -> for specific pieces of specific player, make a validation function (one for defender, one for attacker)
-                validating the movement of AI, Firewal, Program (recall that Tech and Virus can move everywhere for both players)"""
+
     def is_valid_move(self, coords : CoordPair) -> bool:
-        """Validate a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
             return False
-        unit = self.get(coords.src)
-        if unit is None or unit.player != self.next_player:
+        
+        unit_src = self.get(coords.src)
+        if unit_src is None or unit_src.player != self.next_player:
             return False
-        unit = self.get(coords.dst)
-        return (unit is None)
+    
+        if coords.dst not in coords.src.iter_adjacent():
+            return False
+        
+        if (self.next_player == Player.Attacker and not self.validate_atacker_move(unit_src, coords.dst, coords.src)) or (self.next_player == Player.Defender and not self.validate_defender_move(unit_src, coords.dst, coords.src)):
+            return False 
 
+        unit_dest = self.get(coords.dst)       
+        return (unit_dest is None)
+
+
+    #validate atacker piece movement
+    def validate_atacker_move(self, unit, dest, src):
+
+        if unit.type in [UnitType.Program, UnitType.Firewall, UnitType.AI]:
+
+            if dest in  [Coord(src.row - 1,src.col), Coord(src.row,src.col - 1)]:
+                return True            
+            return False
+        else:
+            return True
+        
+    #validate defender piece movement
+    def validate_defender_move(self, unit, dest, src):
+
+        if unit.type in [UnitType.Program, UnitType.Firewall, UnitType.AI]:
+            
+            if dest in  [Coord(src.row + 1,src.col), Coord(src.row,src.col + 1)]:
+                return True            
+            return False
+        else:
+            return True
+
+
+    """TODO: Add combat check (code on another branch) to verify if piece can run away or not when engaged in combat"""
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
         if self.is_valid_move(coords):
@@ -329,6 +359,7 @@ class Game:
             self.set(coords.src,None)
             return (True,"")
         return (False,"invalid move")
+
 
     def next_turn(self):
         """Transitions game to the next turn."""
