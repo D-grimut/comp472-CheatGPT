@@ -355,7 +355,8 @@ class Game:
 
         # check if in combat
         if self.check_combat(coords.src):
-            return False
+            print (unit.health)
+            # return False
 
         unit = self.get(coords.dst)
         return unit is None
@@ -368,9 +369,19 @@ class Game:
             unit = self.get(adj)
             # if piece is not empty and not ours, combat
             if unit is not None and unit.player != self.next_player:
-                return True
+                # return True
+                self.combat_sequence(adj, coord)
+                # print(adj)
         # if not no combat
         return False
+    
+    def combat_sequence(self, coord: Coord, src: Coord):
+        unit = self.get(coord)
+        srcUnit = self.get(src)
+
+        dmgInfl = srcUnit.damage_amount(unit)
+        
+        unit.mod_health(dmgInfl)
 
     def perform_move(self, coords: CoordPair) -> Tuple[bool, str]:
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
