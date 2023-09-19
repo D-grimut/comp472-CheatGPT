@@ -117,8 +117,9 @@ class Coord:
 
     row: int = 0
     col: int = 0
-
+    
     def __eq__(self, other: Coord) -> bool:
+        # Comparing two coord objects (overloaded == opearator for the Coords)
         if self.row == other.row and self.col == other.col:
             return True
         else:
@@ -419,17 +420,21 @@ class Game:
 
 
     def self_destruct(self, src: Coord):
+        # Retrieve all sourounding units 
         sourounding_coords = self.get_sourounding_units(src)
 
+        # iterate over the sourounding entities and damage their health (if unit exists)
+        #  - if health smaller than or eqaul to zero, remove dead unit from board
         for place in sourounding_coords:
             entity = self.get(place)
 
             if entity is not None:
-                entity.mod_health(2)
+                entity.mod_health(-2)
 
                 if(entity.health <= 0):
                     self.remove_dead()
 
+        # Remove the self destructed unit
         suicide_unit = self.get(src)
         suicide_unit.health = 0
         self.remove_dead(src)
@@ -437,13 +442,23 @@ class Game:
 
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
+
         unit_src = self.get(coords.src)
+        # If unti is not existant, then no move should be done
         if unit_src is None:
             return(False, "invalid move - no unit at this position")
 
+        # If des coord is same as source, self destruct
         if(coords.src == coords.dst):
             self.self_destruct(coords.src)
-            return(True, "")
+
+            for i in coords.src.iter_range(1):
+                u = self.get(i)
+                if u is not None:
+                    print(u.to_string)
+
+            return(True, "")     
+        
 
         #TODO:add no combat repair friendly case (repair when you can move)
 
