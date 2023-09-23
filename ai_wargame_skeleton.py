@@ -402,26 +402,28 @@ class Game:
             return False
         else:
             return True
+        
+    def repair_friendly(self, target: Unit, src: Unit, targ_coord: Coord, source_coord: Coord):
+        hp_gained = src.repair_amount(target)
 
+        target.mod_health(hp_gained)
+        print(f'{target.to_string}')
 
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
         unit_src = self.get(coords.src)
+        target =  self.get(coords.dst)
 
         #add no combat repair friendly case (repair when you can move)
 
-        if unit_src is not None and unit_src.type not in [UnitType.Tech, UnitType.Virus] and self.check_combat(coords.src):
-        
-            target =  self.get(coords.dst)
+        if unit_src is not None and target is not None and unit_src.type in [UnitType.Tech, UnitType.AI] and target.player == self.next_player:
+                self.repair_friendly(target, unit_src, coords.dst, coords.src)
+                return (True, "")
 
+        if unit_src is not None and unit_src.type not in [UnitType.Tech, UnitType.Virus] and self.check_combat(coords.src):
             if target is not None and target.player != self.next_player:
                 self.combat_sequence(target, unit_src, coords.dst, coords.src)
                 return (True, "")
-            
-            elif target is not None and target.player == self.next_player:
-                #repar
-                return (True, "")
-            
             else:
                 return (False, "invalid move") 
 
