@@ -666,6 +666,7 @@ def main():
         help="game type: auto|attacker|defender|manual",
     )
     parser.add_argument("--broker", type=str, help="play via a game broker")
+    parser.add_argument("--max_turns", type=int, help="maximum turns")
     args = parser.parse_args()
 
     # parse the game type
@@ -688,6 +689,8 @@ def main():
         options.max_time = args.max_time
     if args.broker is not None:
         options.broker = args.broker
+    if args.max_turns is not None:
+        options.max_turns = args.max_turns
 
     # create a new game
     game = Game(options=options)
