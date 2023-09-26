@@ -334,7 +334,6 @@ class Game:
             target.mod_health(health_delta)
             self.remove_dead(coord)
 
-
     def check_combat(self, coord: Coord) -> bool:
         """Check if the piece is in a combat position"""
         # check for all adj positions
@@ -346,15 +345,17 @@ class Game:
                 return True
         # if not no combat
         return False
-    
-    def combat_sequence(self, target: Unit, src: Unit, targ_coord: Coord, source_coord: Coord):
+
+    def combat_sequence(
+        self, target: Unit, src: Unit, targ_coord: Coord, source_coord: Coord
+    ):
         dmgInfl = src.damage_amount(target)
         dmgTaken = target.damage_amount(src)
 
         target.mod_health(-dmgInfl)
         src.mod_health(-dmgTaken)
-        print(f'{src.to_string}')
-        print(f'{target.to_string}')
+        print(f"{src.to_string}")
+        print(f"{target.to_string}")
 
         if target.health <= 0:
             self.remove_dead(targ_coord)
@@ -362,75 +363,76 @@ class Game:
         if src.health <= 0:
             self.remove_dead(source_coord)
 
-
-    def is_valid_move(self, coords : CoordPair) -> bool:
+    def is_valid_move(self, coords: CoordPair) -> bool:
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
             return False
-        
+
         unit_src = self.get(coords.src)
         if unit_src is None or unit_src.player != self.next_player:
             return False
-    
+
         if coords.dst not in coords.src.iter_adjacent():
             return False
-        
-        if (self.next_player == Player.Attacker and not self.validate_atacker_move(unit_src, coords.dst, coords.src)) or (self.next_player == Player.Defender and not self.validate_defender_move(unit_src, coords.dst, coords.src)):
-            return False 
 
-        unit_dest = self.get(coords.dst)       
-        return (unit_dest is None)
+        if (
+            self.next_player == Player.Attacker
+            and not self.validate_atacker_move(unit_src, coords.dst, coords.src)
+        ) or (
+            self.next_player == Player.Defender
+            and not self.validate_defender_move(unit_src, coords.dst, coords.src)
+        ):
+            return False
 
+        unit_dest = self.get(coords.dst)
+        return unit_dest is None
 
-    #validate atacker piece movement
+    # validate atacker piece movement
     def validate_atacker_move(self, unit, dest, src):
-
         if unit.type in [UnitType.Program, UnitType.Firewall, UnitType.AI]:
-
-            if dest in  [Coord(src.row - 1,src.col), Coord(src.row,src.col - 1)]:
-                return True            
+            if dest in [Coord(src.row - 1, src.col), Coord(src.row, src.col - 1)]:
+                return True
             return False
         else:
             return True
-        
-    #validate defender piece movement
+
+    # validate defender piece movement
     def validate_defender_move(self, unit, dest, src):
-
         if unit.type in [UnitType.Program, UnitType.Firewall, UnitType.AI]:
-            
-            if dest in  [Coord(src.row + 1,src.col), Coord(src.row,src.col + 1)]:
-                return True            
+            if dest in [Coord(src.row + 1, src.col), Coord(src.row, src.col + 1)]:
+                return True
             return False
         else:
             return True
 
-
-    def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
+    def perform_move(self, coords: CoordPair) -> Tuple[bool, str]:
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
         unit_src = self.get(coords.src)
 
-        #add no combat repair friendly case (repair when you can move)
+        # add no combat repair friendly case (repair when you can move)
 
-        if unit_src is not None and unit_src.type not in [UnitType.Tech, UnitType.Virus] and self.check_combat(coords.src):
-        
-            target =  self.get(coords.dst)
+        if (
+            unit_src is not None
+            and unit_src.type not in [UnitType.Tech, UnitType.Virus]
+            and self.check_combat(coords.src)
+        ):
+            target = self.get(coords.dst)
 
             if target is not None and target.player != self.next_player:
                 self.combat_sequence(target, unit_src, coords.dst, coords.src)
                 return (True, "")
-            
+
             elif target is not None and target.player == self.next_player:
-                #repar
+                # repar
                 return (True, "")
-            
+
             else:
-                return (False, "invalid move") 
+                return (False, "invalid move")
 
         if self.is_valid_move(coords):
             self.set(coords.dst, self.get(coords.src))
             self.set(coords.src, None)
             return (True, "")
         return (False, "invalid move")
-
 
     def next_turn(self):
         """Transitions game to the next turn."""
@@ -695,6 +697,25 @@ def main():
     # create a new game
     game = Game(options=options)
 
+    f = open("gameTrace.txt", "w")
+    f.write(f"Timeout is {options.max_time} \n")
+    f.write(f"Max turns is {options.max_turns} \n")
+    if game._attacker_has_ai or game._defender_has_ai:
+        f.write(f"Alpha-beta is {options.alpha_beta} \n")
+    if game._attacker_has_ai:
+        f.write(f"Player 1 = AI \n")
+    else:
+        f.write(f"Player 1 is H \n")
+    if game._defender_has_ai:
+        f.write(f"Player 2 = AI \n")
+    else:
+        f.write(f"Player 2 is H \n")
+    # name heuristic???
+    f.write(f"{game} \n")
+    f.write(
+        "------------------------------------------------------------------------------"
+    )
+
     # the main game loop
     while True:
         print()
@@ -702,6 +723,8 @@ def main():
         winner = game.has_winner()
         if winner is not None:
             print(f"{winner.name} wins!")
+            # writes number of turns played for winner
+            f.write(f"{winner.name} wins in {game.turns_played} turns!")
             break
         if game.options.game_type == GameType.AttackerVsDefender:
             game.human_turn()
@@ -723,6 +746,15 @@ def main():
             else:
                 print("Computer doesn't know what to do!!!")
                 exit(1)
+
+        f.write(f"\nTurn #{game.turns_played} \n")
+        f.write(f"Player {game.next_player.name} \n")
+        # move???
+        # if ai action time?
+        # if ai heuristic score?
+        f.write("New configuration of the board:\n")
+        f.write(f"{game}\n")
+        f.close()
 
 
 ##############################################################################################################
