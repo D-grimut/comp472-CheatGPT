@@ -464,13 +464,12 @@ class Game:
 
             return(True, "")     
         
-
-        #TODO:add no combat repair friendly case (repair when you can move)
-
+        # Repair friednly if target is friendly (and exists)
         if unit_src is not None and target is not None and unit_src.type in [UnitType.Tech, UnitType.AI] and target.player == self.next_player:
                 self.repair_friendly(target, unit_src, coords.dst, coords.src)
                 return (True, "")
 
+        # Attack unit f
         if unit_src is not None and unit_src.type not in [UnitType.Tech, UnitType.Virus] and self.check_combat(coords.src):
             if target is not None and target.player != self.next_player:
                 self.combat_sequence(target, unit_src, coords.dst, coords.src)
