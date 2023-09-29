@@ -697,7 +697,9 @@ def main():
     # create a new game
     game = Game(options=options)
 
-    f = open("gameTrace.txt", "w")
+    filename = f"gameTrace-{str(options.alpha_beta).lower()}-{int(options.max_time)}-{int(options.max_turns)}.txt"
+
+    f = open(filename, "w")
     f.write(f"Timeout is {options.max_time} \n")
     f.write(f"Max turns is {options.max_turns} \n")
     if game._attacker_has_ai or game._defender_has_ai:
