@@ -440,9 +440,7 @@ class Game:
         self, target: Unit, src: Unit, targ_coord: Coord, source_coord: Coord
     ):
         hp_gained = src.repair_amount(target)
-
         target.mod_health(hp_gained)
-        print(f"{target.to_string}")
 
     def perform_move(self, coords: CoordPair, file) -> Tuple[bool, str]:
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
@@ -453,18 +451,21 @@ class Game:
         if unit_src is None:
             return (False, "invalid move - no unit at this position")
 
+        if unit_src.player != self.next_player:
+            return (False, "invalid move")
+
         # If des coord is same as source, self destruct
         if coords.src == coords.dst:
             self.self_destruct(coords.src)
             file.write(f"Move from {coords.src} to {coords.dst} - self destruct\n")
             return (True, "")
 
-        # Repair friednly if target is friendly (and exists)
+        # Repair friendly if target is friendly (and exists)
         if (
             unit_src is not None
             and target is not None
             and unit_src.type in [UnitType.Tech, UnitType.AI]
-            and target.player == self.next_player
+            and target.player == self.next_player and unit_src.repair_amount(target) !=0
         ):
             self.repair_friendly(target, unit_src, coords.dst, coords.src)
             file.write(
@@ -472,7 +473,7 @@ class Game:
             )
             return (True, "")
 
-        # Attack unit f
+        # Attack enemy unit
         if unit_src is not None and self.check_combat(coords.src):
             if target is not None and target.player != self.next_player:
                 self.combat_sequence(target, unit_src, coords.dst, coords.src)
@@ -480,7 +481,7 @@ class Game:
                     f"Move from {coords.src} to {coords.dst} - {unit_src.to_string()} attacks {target.to_string()}\n"
                 )
                 return (True, "")
-            else:
+            elif unit_src.type not in [UnitType.Tech, UnitType.Virus]:
                 return (
                     False,
                     "invalid move - engaged in combat, this piece cannot flee",
