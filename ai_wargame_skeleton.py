@@ -118,6 +118,13 @@ class Coord:
     row: int = 0
     col: int = 0
 
+    def __eq__(self, other: Coord) -> bool:
+        # Comparing two coord objects (overloaded == opearator for the Coords)
+        if self.row == other.row and self.col == other.col:
+            return True
+        else:
+            return False
+
     def col_string(self) -> str:
         """Text representation of this Coord's column."""
         coord_char = "?"
@@ -404,29 +411,85 @@ class Game:
         else:
             return True
 
+    def get_sourounding_units(self, coord: Coord):
+        units = []
+        # Iterate over sourounding entities (including diagonals)
+        for enplacement in coord.iter_range(1):
+            units.append(enplacement)
+        return units
+
+    def self_destruct(self, src: Coord):
+        # Retrieve all sourounding units
+        sourounding_coords = self.get_sourounding_units(src)
+
+        # iterate over the sourounding entities and damage their health (if unit exists)
+        #  - if health smaller than or eqaul to zero, remove dead unit from board
+        for place in sourounding_coords:
+            entity = self.get(place)
+
+            if entity is not None:
+                entity.mod_health(-2)
+
+                if entity.health <= 0:
+                    self.remove_dead()
+
+        # Remove the self destructed unit
+        suicide_unit = self.get(src)
+        suicide_unit.health = 0
+        self.remove_dead(src)
+
+    def repair_friendly(
+        self, target: Unit, src: Unit, targ_coord: Coord, source_coord: Coord
+    ):
+        hp_gained = src.repair_amount(target)
+
+        target.mod_health(hp_gained)
+        print(f"{target.to_string}")
+
     def perform_move(self, coords: CoordPair) -> Tuple[bool, str]:
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
         unit_src = self.get(coords.src)
+        target = self.get(coords.dst)
 
-        # add no combat repair friendly case (repair when you can move)
+        # If unti is not existant, then no move should be done
+        if unit_src is None:
+            return (False, "invalid move - no unit at this position")
 
+        # If des coord is same as source, self destruct
+        if coords.src == coords.dst:
+            self.self_destruct(coords.src)
+
+            for i in coords.src.iter_range(1):
+                u = self.get(i)
+                if u is not None:
+                    print(u.to_string)
+
+            return (True, "")
+
+        # Repair friednly if target is friendly (and exists)
+        if (
+            unit_src is not None
+            and target is not None
+            and unit_src.type in [UnitType.Tech, UnitType.AI]
+            and target.player == self.next_player
+        ):
+            self.repair_friendly(target, unit_src, coords.dst, coords.src)
+            return (True, "")
+
+        # Attack unit f
         if (
             unit_src is not None
             and unit_src.type not in [UnitType.Tech, UnitType.Virus]
             and self.check_combat(coords.src)
         ):
-            target = self.get(coords.dst)
-
             if target is not None and target.player != self.next_player:
                 self.combat_sequence(target, unit_src, coords.dst, coords.src)
                 return (True, "")
-
-            elif target is not None and target.player == self.next_player:
-                # repar
-                return (True, "")
-
             else:
-                return (False, "invalid move")
+                return (
+                    False,
+                    "invalid move - engaged in combat, this piece cannot flee",
+                )
 
         if self.is_valid_move(coords):
             self.set(coords.dst, self.get(coords.src))
