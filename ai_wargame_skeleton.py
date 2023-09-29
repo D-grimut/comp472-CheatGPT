@@ -361,8 +361,6 @@ class Game:
 
         target.mod_health(-dmgInfl)
         src.mod_health(-dmgTaken)
-        print(f"{src.to_string}")
-        print(f"{target.to_string}")
 
         if target.health <= 0:
             self.remove_dead(targ_coord)
@@ -475,11 +473,7 @@ class Game:
             return (True, "")
 
         # Attack unit f
-        if (
-            unit_src is not None
-            and unit_src.type not in [UnitType.Tech, UnitType.Virus]
-            and self.check_combat(coords.src)
-        ):
+        if unit_src is not None and self.check_combat(coords.src):
             if target is not None and target.player != self.next_player:
                 self.combat_sequence(target, unit_src, coords.dst, coords.src)
                 file.write(
