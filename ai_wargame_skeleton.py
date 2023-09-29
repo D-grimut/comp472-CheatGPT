@@ -446,7 +446,7 @@ class Game:
         target.mod_health(hp_gained)
         print(f"{target.to_string}")
 
-    def perform_move(self, coords: CoordPair) -> Tuple[bool, str]:
+    def perform_move(self, coords: CoordPair, file) -> Tuple[bool, str]:
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
         unit_src = self.get(coords.src)
         target = self.get(coords.dst)
@@ -458,12 +458,7 @@ class Game:
         # If des coord is same as source, self destruct
         if coords.src == coords.dst:
             self.self_destruct(coords.src)
-
-            for i in coords.src.iter_range(1):
-                u = self.get(i)
-                if u is not None:
-                    print(u.to_string)
-
+            file.write(f"Move from {coords.src} to {coords.dst} - self destruct\n")
             return (True, "")
 
         # Repair friednly if target is friendly (and exists)
@@ -474,6 +469,9 @@ class Game:
             and target.player == self.next_player
         ):
             self.repair_friendly(target, unit_src, coords.dst, coords.src)
+            file.write(
+                f"Move from {coords.src} to {coords.dst} - repair unit {target.to_string()}\n"
+            )
             return (True, "")
 
         # Attack unit f
@@ -484,6 +482,9 @@ class Game:
         ):
             if target is not None and target.player != self.next_player:
                 self.combat_sequence(target, unit_src, coords.dst, coords.src)
+                file.write(
+                    f"Move from {coords.src} to {coords.dst} - {unit_src.to_string()} attacks {target.to_string()}\n"
+                )
                 return (True, "")
             else:
                 return (
@@ -494,6 +495,7 @@ class Game:
         if self.is_valid_move(coords):
             self.set(coords.dst, self.get(coords.src))
             self.set(coords.src, None)
+            file.write(f"Move from {coords.src} to {coords.dst}\n")
             return (True, "")
         return (False, "invalid move")
 
@@ -554,14 +556,14 @@ class Game:
             else:
                 print("Invalid coordinates! Try again.")
 
-    def human_turn(self):
+    def human_turn(self, file):
         """Human player plays a move (or get via broker)."""
         if self.options.broker is not None:
             print("Getting next move with auto-retry from game broker...")
             while True:
                 mv = self.get_move_from_broker()
                 if mv is not None:
-                    (success, result) = self.perform_move(mv)
+                    (success, result) = self.perform_move(mv, file)
                     print(f"Broker {self.next_player.name}: ", end="")
                     print(result)
                     if success:
@@ -571,7 +573,7 @@ class Game:
         else:
             while True:
                 mv = self.read_move()
-                (success, result) = self.perform_move(mv)
+                (success, result) = self.perform_move(mv, file)
                 if success:
                     print(f"Player {self.next_player.name}: ", end="")
                     print(result)
@@ -580,11 +582,11 @@ class Game:
                 else:
                     print("The move is not valid! Try again.")
 
-    def computer_turn(self) -> CoordPair | None:
+    def computer_turn(self, file) -> CoordPair | None:
         """Computer plays a move."""
         mv = self.suggest_move()
         if mv is not None:
-            (success, result) = self.perform_move(mv)
+            (success, result) = self.perform_move(mv, file)
             if success:
                 print(f"Computer {self.next_player.name}: ", end="")
                 print(result)
@@ -786,23 +788,25 @@ def main():
         print()
         print(game)
         winner = game.has_winner()
+        f.write(f"\nTurn #{game.turns_played} \n")
+        f.write(f"Player {game.next_player.name} \n")
         if winner is not None:
             print(f"{winner.name} wins!")
             # writes number of turns played for winner
             f.write(f"{winner.name} wins in {game.turns_played} turns!")
             break
         if game.options.game_type == GameType.AttackerVsDefender:
-            game.human_turn()
+            game.human_turn(f)
         elif (
             game.options.game_type == GameType.AttackerVsComp
             and game.next_player == Player.Attacker
         ):
-            game.human_turn()
+            game.human_turn(f)
         elif (
             game.options.game_type == GameType.CompVsDefender
             and game.next_player == Player.Defender
         ):
-            game.human_turn()
+            game.human_turn(f)
         else:
             player = game.next_player
             move = game.computer_turn()
@@ -812,14 +816,10 @@ def main():
                 print("Computer doesn't know what to do!!!")
                 exit(1)
 
-        f.write(f"\nTurn #{game.turns_played} \n")
-        f.write(f"Player {game.next_player.name} \n")
-        # move???
         # if ai action time?
         # if ai heuristic score?
         f.write("New configuration of the board:\n")
         f.write(f"{game}\n")
-        f.close()
 
 
 ##############################################################################################################
