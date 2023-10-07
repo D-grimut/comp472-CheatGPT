@@ -443,7 +443,6 @@ class Game:
         target.mod_health(hp_gained)
 
     def perform_move(self, coords: CoordPair, file) -> Tuple[bool, str]:
-        """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
         unit_src = self.get(coords.src)
         target = self.get(coords.dst)
 
@@ -457,7 +456,8 @@ class Game:
         # If des coord is same as source, self destruct
         if coords.src == coords.dst:
             self.self_destruct(coords.src)
-            file.write(f"Move from {coords.src} to {coords.dst} - self destruct\n")
+            if(file is not None):
+                file.write(f"Move from {coords.src} to {coords.dst} - self destruct\n")
             return (True, "")
 
         # Repair friendly if target is friendly (and exists)
@@ -468,18 +468,20 @@ class Game:
             and target.player == self.next_player and unit_src.repair_amount(target) !=0
         ):
             self.repair_friendly(target, unit_src, coords.dst, coords.src)
-            file.write(
-                f"Move from {coords.src} to {coords.dst} - repair unit {target.to_string()}\n"
-            )
+            if(file is not None):
+                file.write(
+                    f"Move from {coords.src} to {coords.dst} - repair unit {target.to_string()}\n"
+                )
             return (True, "")
 
         # Attack enemy unit
         if unit_src is not None and self.check_combat(coords.src):
             if target is not None and target.player != self.next_player:
                 self.combat_sequence(target, unit_src, coords.dst, coords.src)
-                file.write(
-                    f"Move from {coords.src} to {coords.dst} - {unit_src.to_string()} attacks {target.to_string()}\n"
-                )
+                if(file is not None):
+                    file.write(
+                        f"Move from {coords.src} to {coords.dst} - {unit_src.to_string()} attacks {target.to_string()}\n"
+                    )
                 return (True, "")
             elif unit_src.type not in [UnitType.Tech, UnitType.Virus]:
                 return (
@@ -490,7 +492,8 @@ class Game:
         if self.is_valid_move(coords):
             self.set(coords.dst, self.get(coords.src))
             self.set(coords.src, None)
-            file.write(f"Move from {coords.src} to {coords.dst}\n")
+            if(file is not None):
+                file.write(f"Move from {coords.src} to {coords.dst}\n")
             return (True, "")
         return (False, "invalid move")
 
@@ -630,6 +633,35 @@ class Game:
             return (0, move_candidates[0], 1)
         else:
             return (0, None, 0)
+        
+        
+    def minimax(self, board: Game, depth: int, is_maxiPlayer: bool) -> (int, CoordPair, int):
+        if depth == 0:
+            return e0_heuristic(board) 
+        
+        possible_moves = board.move_candidates()
+
+        if is_maxiPlayer:
+            max_eval = MIN_HEURISTIC_SCORE
+
+            for move in possible_moves:
+                new_game = board.clone()
+                new_game.perform_move(move, None)
+                (eval, move, depth) = self.minimax(new_game, depth - 1, False)
+                max_eval = max(max_eval, eval)
+
+            return max_eval, 
+        
+        else:
+            min_eval = MAX_HEURISTIC_SCORE
+
+            for move in possible_moves:
+                new_game = board.clone()
+                new_game.perform_move(move, None)
+                (eval, move, depth) = self.minimax(new_game, depth - 1, True)
+                min_eval = max(min_eval, eval)
+
+            return min_eval
 
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
@@ -706,7 +738,6 @@ class Game:
             print(f"Broker error: {error}")
         return None
 
-
 ##############################################################################################################
 
 
@@ -733,7 +764,8 @@ def main():
     elif args.game_type == "defender":
         game_type = GameType.CompVsDefender
     elif args.game_type == "manual":
-        game_type = GameType.AttackerVsDefender
+        # TODO change at end to manual
+        game_type = GameType.CompVsComp 
     else:
         game_type = GameType.CompVsComp
 
@@ -800,7 +832,7 @@ def main():
             game.human_turn(f)
         else:
             player = game.next_player
-            move = game.computer_turn()
+            move = game.computer_turn(f)
             if move is not None:
                 game.post_move_to_broker(move)
             else:
@@ -839,6 +871,13 @@ def count_pieces_by_player(game: Game) -> Dict[str, Dict[str, int]]:
                 piece_count[piece.player][piece.type] += 1
 
     return piece_count
+
+# Assuming P1 is the attacker - heuristic from the handout
+def e0_heuristic(game: Game) -> int:
+    dict_pieces = count_pieces_by_player(game)
+    attachker_sum = 3 * dict_pieces[Player.Attacker][UnitType.Virus] + 3 * dict_pieces[Player.Attacker][UnitType.Tech] + 3 * dict_pieces[Player.Attacker][UnitType.Firewall] + 3 * dict_pieces[Player.Attacker][UnitType.Program] + 9999 * dict_pieces[Player.Attacker][UnitType.AI]
+    defender_sum = 3 * dict_pieces[Player.Defender][UnitType.Virus] + 3 * dict_pieces[Player.Defender][UnitType.Tech] + 3 * dict_pieces[Player.Defender][UnitType.Firewall] + 3 * dict_pieces[Player.Defender][UnitType.Program] + 9999 * dict_pieces[Player.Defender][UnitType.AI]
+    return (attachker_sum - defender_sum)
 
 if __name__ == "__main__":
     main()
