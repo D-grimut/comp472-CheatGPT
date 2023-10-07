@@ -815,5 +815,30 @@ def main():
 
 ##############################################################################################################
 
+def count_pieces_by_player(game: Game) -> Dict[str, Dict[str, int]]:
+    piece_count = {
+        Player.Attacker: {
+            UnitType.Virus: 0,
+            UnitType.Tech: 0,
+            UnitType.Firewall: 0,
+            UnitType.Program: 0,
+            UnitType.AI: 0,
+        },
+        Player.Defender: {
+            UnitType.Virus: 0,
+            UnitType.Tech: 0,
+            UnitType.Firewall: 0,
+            UnitType.Program: 0,
+            UnitType.AI: 0,
+        },
+    }
+
+    for row in game.board:
+        for piece in row:
+            if piece:
+                piece_count[piece.player][piece.type] += 1
+
+    return piece_count
+
 if __name__ == "__main__":
     main()
