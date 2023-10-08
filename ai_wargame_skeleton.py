@@ -419,6 +419,12 @@ class Game:
     def self_destruct(self, src: Coord):
         # Retrieve all sourounding units
         sourounding_coords = self.get_sourounding_units(src)
+        suicide_unit = self.get(src)
+
+        #TODO: find where this bug is comming from - suicide unit has health zero - somewhere in the code
+        # we do not remove dead units - this is likely to the way we pass the board copy in minimax
+        if suicide_unit is None:
+            return
 
         # iterate over the sourounding entities and damage their health (if unit exists)
         #  - if health smaller than or eqaul to zero, remove dead unit from board
@@ -429,10 +435,9 @@ class Game:
                 entity.mod_health(-2)
 
                 if entity.health <= 0:
-                    self.remove_dead()
+                    self.remove_dead(src)
 
-        # Remove the self destructed unit
-        suicide_unit = self.get(src)
+        # Remove the self destructed unit    
         suicide_unit.health = 0
         self.remove_dead(src)
 
@@ -625,48 +630,52 @@ class Game:
             move.dst = src
             yield move.clone()
 
-    def random_move(self) -> Tuple[int, CoordPair | None, float]:
-        """Returns a random move."""
-        move_candidates = list(self.move_candidates())
-        random.shuffle(move_candidates)
-        if len(move_candidates) > 0:
-            return (0, move_candidates[0], 1)
-        else:
-            return (0, None, 0)
         
-        
-    def minimax(self, board: Game, depth: int, is_maxiPlayer: bool) -> (int, CoordPair, int):
+    def minimax(self, depth: int, is_maxiPlayer: bool) -> (int, CoordPair, int):
         if depth == 0:
-            return e0_heuristic(board) 
+            return e0_heuristic(self), None, depth
         
-        possible_moves = board.move_candidates()
+        possible_moves = self.move_candidates()
 
         if is_maxiPlayer:
             max_eval = MIN_HEURISTIC_SCORE
+            optimal_move = None
 
             for move in possible_moves:
-                new_game = board.clone()
+                new_game = self.clone()
                 new_game.perform_move(move, None)
-                (eval, move, depth) = self.minimax(new_game, depth - 1, False)
-                max_eval = max(max_eval, eval)
+                (eval, move_performed, depth_stat) = new_game.minimax(depth - 1, False)
 
-            return max_eval, 
+                if max_eval < eval:
+                    max_eval = eval
+                    optimal_move = move
+
+            return max_eval, optimal_move, 0, 
         
         else:
             min_eval = MAX_HEURISTIC_SCORE
+            optimal_move = None
 
             for move in possible_moves:
-                new_game = board.clone()
+                new_game = self.clone()
                 new_game.perform_move(move, None)
-                (eval, move, depth) = self.minimax(new_game, depth - 1, True)
-                min_eval = max(min_eval, eval)
+                (eval, move_performed, depth_stat) = new_game.minimax(depth - 1, True)
 
-            return min_eval
+                if min_eval > eval:
+                    min_eval = eval
+                    optimal_move = move
+
+            return min_eval, optimal_move, 0
 
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
         start_time = datetime.now()
-        (score, move, avg_depth) = self.random_move()
+
+        if self.next_player == Player.Attacker:
+            (score, move, avg_depth) = self.minimax(5, True)
+        else:
+            (score, move, avg_depth) = self.minimax(5, False)
+            
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
         print(f"Heuristic score: {score}")
@@ -847,7 +856,7 @@ def main():
 
 ##############################################################################################################
 
-def count_pieces_by_player(game: Game) -> Dict[str, Dict[str, int]]:
+def count_pieces_by_player(game: Game):
     piece_count = {
         Player.Attacker: {
             UnitType.Virus: 0,
