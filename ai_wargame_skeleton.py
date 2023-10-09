@@ -24,6 +24,16 @@ class UnitType(Enum):
     Firewall = 4
 
 
+class MoveType(Enum):
+    """Every Move Type - for move validation."""
+
+    Invalid = -1
+    Repair = 1
+    Attack = 2
+    Advance = 3
+    SelfDestruct = 4
+
+
 class Player(Enum):
     """The 2 players."""
 
@@ -368,14 +378,13 @@ class Game:
         if src.health <= 0:
             self.remove_dead(source_coord)
 
-    def is_valid_move(self, coords: CoordPair) -> bool:
-        if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
-            return False
+    def is_valid_advance(self, coords: CoordPair) -> bool:
 
         unit_src = self.get(coords.src)
-        if unit_src is None or unit_src.player != self.next_player:
-            return False
 
+        if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
+            return False
+        
         if coords.dst not in coords.src.iter_adjacent():
             return False
 
@@ -394,7 +403,7 @@ class Game:
     # validate atacker piece movement
     def validate_atacker_move(self, unit, dest, src):
         if unit.type in [UnitType.Program, UnitType.Firewall, UnitType.AI]:
-            if dest in [Coord(src.row - 1, src.col), Coord(src.row, src.col - 1)]:
+            if dest in [Coord(src.row - 1, src.col), Coord(src.row, src.col - 1), Coord(src.row, src.col)]:
                 return True
             return False
         else:
@@ -403,7 +412,7 @@ class Game:
     # validate defender piece movement
     def validate_defender_move(self, unit, dest, src):
         if unit.type in [UnitType.Program, UnitType.Firewall, UnitType.AI]:
-            if dest in [Coord(src.row + 1, src.col), Coord(src.row, src.col + 1)]:
+            if dest in [Coord(src.row + 1, src.col), Coord(src.row, src.col + 1), Coord(src.row, src.col)]:
                 return True
             return False
         else:
@@ -441,66 +450,135 @@ class Game:
         suicide_unit.health = 0
         self.remove_dead(src)
 
+    def validate_move(self, coords: CoordPair):
+        unit_src = self.get(coords.src)
+        target = self.get(coords.dst)
+
+        if unit_src is None or unit_src.player != self.next_player:
+            return MoveType.Invalid
+        
+        if coords.src == coords.dst:
+            return MoveType.SelfDestruct
+        
+        elif (
+            target is not None
+            and unit_src.type in [UnitType.Tech, UnitType.AI]
+            and target.player == self.next_player and unit_src.repair_amount(target) !=0
+        ):
+            return MoveType.Repair
+        
+        elif self.check_combat(coords.src):
+            if target is not None and target.player != self.next_player:               
+                return MoveType.Attack
+            
+            elif unit_src.type not in [UnitType.Tech, UnitType.Virus]:
+                return MoveType.Invalid
+        
+        if self.is_valid_advance(coords):
+            return MoveType.Advance
+            
+        return MoveType.Invalid
+    
+
     def repair_friendly(
         self, target: Unit, src: Unit, targ_coord: Coord, source_coord: Coord
     ):
         hp_gained = src.repair_amount(target)
         target.mod_health(hp_gained)
 
+
     def perform_move(self, coords: CoordPair, file) -> Tuple[bool, str]:
         unit_src = self.get(coords.src)
         target = self.get(coords.dst)
 
-        # If unti is not existant, then no move should be done
-        if unit_src is None:
-            return (False, "invalid move - no unit at this position")
+        move_type = self.validate_move(coords)
 
-        if unit_src.player != self.next_player:
+        if(move_type is MoveType.Invalid):
             return (False, "invalid move")
-
-        # If des coord is same as source, self destruct
-        if coords.src == coords.dst:
-            self.self_destruct(coords.src)
-            if(file is not None):
-                file.write(f"Move from {coords.src} to {coords.dst} - self destruct\n")
-            return (True, "")
-
-        # Repair friendly if target is friendly (and exists)
-        if (
-            unit_src is not None
-            and target is not None
-            and unit_src.type in [UnitType.Tech, UnitType.AI]
-            and target.player == self.next_player and unit_src.repair_amount(target) !=0
-        ):
+        
+        if(move_type is MoveType.Repair):
             self.repair_friendly(target, unit_src, coords.dst, coords.src)
             if(file is not None):
                 file.write(
                     f"Move from {coords.src} to {coords.dst} - repair unit {target.to_string()}\n"
                 )
             return (True, "")
-
-        # Attack enemy unit
-        if unit_src is not None and self.check_combat(coords.src):
-            if target is not None and target.player != self.next_player:
-                self.combat_sequence(target, unit_src, coords.dst, coords.src)
-                if(file is not None):
-                    file.write(
-                        f"Move from {coords.src} to {coords.dst} - {unit_src.to_string()} attacks {target.to_string()}\n"
-                    )
-                return (True, "")
-            elif unit_src.type not in [UnitType.Tech, UnitType.Virus]:
-                return (
-                    False,
-                    "invalid move - engaged in combat, this piece cannot flee",
+        
+        if(move_type is MoveType.Attack):
+            self.combat_sequence(target, unit_src, coords.dst, coords.src)
+            if(file is not None):
+                file.write(
+                    f"Move from {coords.src} to {coords.dst} - {unit_src.to_string()} attacks {target.to_string()}\n"
                 )
-
-        if self.is_valid_move(coords):
+            return (True, "")
+        
+        if(move_type is MoveType.Advance):
             self.set(coords.dst, self.get(coords.src))
             self.set(coords.src, None)
             if(file is not None):
                 file.write(f"Move from {coords.src} to {coords.dst}\n")
             return (True, "")
-        return (False, "invalid move")
+        
+        if (move_type is MoveType.SelfDestruct):
+            if coords.src == coords.dst:
+                self.self_destruct(coords.src)
+                if(file is not None):
+                    file.write(f"Move from {coords.src} to {coords.dst} - self destruct\n")
+                return (True, "")
+
+
+
+# OLD VALIDATIUON CODE - TODO REMOVE AT END
+        # # If unti is not existant, then no move should be done
+        # if unit_src is None:
+        #     return (False, "invalid move - no unit at this position")
+
+        # if unit_src.player != self.next_player:
+        #     return (False, "invalid move")
+
+        # # If des coord is same as source, self destruct
+        # if coords.src == coords.dst:
+        #     self.self_destruct(coords.src)
+        #     if(file is not None):
+        #         file.write(f"Move from {coords.src} to {coords.dst} - self destruct\n")
+        #     return (True, "")
+
+        # # Repair friendly if target is friendly (and exists)
+        # if (
+        #     unit_src is not None
+        #     and target is not None
+        #     and unit_src.type in [UnitType.Tech, UnitType.AI]
+        #     and target.player == self.next_player and unit_src.repair_amount(target) !=0
+        # ):
+        #     self.repair_friendly(target, unit_src, coords.dst, coords.src)
+        #     if(file is not None):
+        #         file.write(
+        #             f"Move from {coords.src} to {coords.dst} - repair unit {target.to_string()}\n"
+        #         )
+        #     return (True, "")
+
+        # # Attack enemy unit
+        # if unit_src is not None and self.check_combat(coords.src):
+        #     if target is not None and target.player != self.next_player:
+        #         self.combat_sequence(target, unit_src, coords.dst, coords.src)
+        #         if(file is not None):
+        #             file.write(
+        #                 f"Move from {coords.src} to {coords.dst} - {unit_src.to_string()} attacks {target.to_string()}\n"
+        #             )
+        #         return (True, "")
+        #     elif unit_src.type not in [UnitType.Tech, UnitType.Virus]:
+        #         return (
+        #             False,
+        #             "invalid move - engaged in combat, this piece cannot flee",
+        #         )
+
+        # if self.is_valid_move(coords):
+        #     self.set(coords.dst, self.get(coords.src))
+        #     self.set(coords.src, None)
+        #     if(file is not None):
+        #         file.write(f"Move from {coords.src} to {coords.dst}\n")
+        #     return (True, "")
+        # return (False, "invalid move")
 
     def next_turn(self):
         """Transitions game to the next turn."""
@@ -625,7 +703,7 @@ class Game:
             move.src = src
             for dst in src.iter_adjacent():
                 move.dst = dst
-                if self.is_valid_move(move):
+                if self.validate_move(move) is not MoveType.Invalid:
                     yield move.clone()
             move.dst = src
             yield move.clone()
@@ -633,7 +711,10 @@ class Game:
         
     def minimax(self, depth: int, is_maxiPlayer: bool) -> (int, CoordPair, int):
         if depth == 0:
+            # OG e0() heuristic
             return e0_heuristic(self), None, depth
+            # modified e0() to test health
+            # return e0_heuristic_with_health(self), None, depth
         
         possible_moves = self.move_candidates()
 
@@ -650,7 +731,7 @@ class Game:
                     max_eval = eval
                     optimal_move = move
 
-            return max_eval, optimal_move, 0, 
+            return max_eval, optimal_move, 0
         
         else:
             min_eval = MAX_HEURISTIC_SCORE
@@ -857,6 +938,10 @@ def main():
 ##############################################################################################################
 
 def count_pieces_by_player(game: Game):
+
+    total_health_attacker = 0
+    total_health_defender = 0
+
     piece_count = {
         Player.Attacker: {
             UnitType.Virus: 0,
@@ -876,17 +961,31 @@ def count_pieces_by_player(game: Game):
 
     for row in game.board:
         for piece in row:
+
             if piece:
                 piece_count[piece.player][piece.type] += 1
+                
+                if piece.player == Player.Attacker:
+                    total_health_attacker += piece.health
+                else:
+                    total_health_defender += piece.health   
 
-    return piece_count
+    return piece_count, total_health_attacker, total_health_defender
 
 # Assuming P1 is the attacker - heuristic from the handout
 def e0_heuristic(game: Game) -> int:
-    dict_pieces = count_pieces_by_player(game)
-    attachker_sum = 3 * dict_pieces[Player.Attacker][UnitType.Virus] + 3 * dict_pieces[Player.Attacker][UnitType.Tech] + 3 * dict_pieces[Player.Attacker][UnitType.Firewall] + 3 * dict_pieces[Player.Attacker][UnitType.Program] + 9999 * dict_pieces[Player.Attacker][UnitType.AI]
+    (dict_pieces, health_attack, health_defend) = count_pieces_by_player(game)
+    attacker_sum = 3 * dict_pieces[Player.Attacker][UnitType.Virus] + 3 * dict_pieces[Player.Attacker][UnitType.Tech] + 3 * dict_pieces[Player.Attacker][UnitType.Firewall] + 3 * dict_pieces[Player.Attacker][UnitType.Program] + 9999 * dict_pieces[Player.Attacker][UnitType.AI]
     defender_sum = 3 * dict_pieces[Player.Defender][UnitType.Virus] + 3 * dict_pieces[Player.Defender][UnitType.Tech] + 3 * dict_pieces[Player.Defender][UnitType.Firewall] + 3 * dict_pieces[Player.Defender][UnitType.Program] + 9999 * dict_pieces[Player.Defender][UnitType.AI]
-    return (attachker_sum - defender_sum)
+    return (attacker_sum - defender_sum)
+
+def e0_heuristic_with_health(game: Game) -> int:
+    (dict_pieces, health_attack, health_defend) = count_pieces_by_player(game)
+
+    attacker_sum = health_attack
+    defender_sum = health_defend
+
+    return (attacker_sum - defender_sum)
 
 if __name__ == "__main__":
     main()
