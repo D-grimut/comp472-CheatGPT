@@ -710,9 +710,16 @@ class Game:
     def minimax(self, depth: int, is_maxiPlayer: bool) -> (int, CoordPair, int):
         if depth == 0:
             # OG e0() heuristic
-            return e0_heuristic(self), None, depth
+            # return e0_heuristic(self), None, depth
             # modified e0() to test health
             # return e0_heuristic_with_health(self), None, depth
+
+
+            if is_maxiPlayer:
+                return e1_heuristic(self), None, depth
+        
+            if not is_maxiPlayer:
+                return e0_heuristic(self), None, depth
         
         possible_moves = self.move_candidates()
 
@@ -723,6 +730,7 @@ class Game:
             for move in possible_moves:
                 new_game = self.clone()
                 new_game.perform_move(move, None)
+                new_game.next_player = Player.Defender
                 (eval, move_performed, depth_stat) = new_game.minimax(depth - 1, False)
 
                 if max_eval < eval:
@@ -738,6 +746,7 @@ class Game:
             for move in possible_moves:
                 new_game = self.clone()
                 new_game.perform_move(move, None)
+                new_game.next_player = Player.Attacker
                 (eval, move_performed, depth_stat) = new_game.minimax(depth - 1, True)
 
                 if min_eval > eval:
@@ -748,12 +757,20 @@ class Game:
         
 
     def minimax_alpha_beta(self, depth: int, is_maxiPlayer: bool, alpha: int, beta :int) -> (int, CoordPair, int):
-        if depth == 0:
+        if depth == 0 or self.is_finished():
+
             # OG e0() heuristic
-            return e0_heuristic(self), None, depth
+            # return e0_heuristic(self), None, depth
             # modified e0() to test health
             # return e0_heuristic_with_health(self), None, depth
+
+            if is_maxiPlayer:
+                return e1_heuristic(self), None, depth
         
+            if not is_maxiPlayer:
+                return e1_heuristic(self), None, depth
+            
+            
         possible_moves = self.move_candidates()
 
         if is_maxiPlayer:
@@ -761,8 +778,14 @@ class Game:
             optimal_move = None
 
             for move in possible_moves:
+
                 new_game = self.clone()
+
+                # perform the new virtual move - to compute possible move
                 new_game.perform_move(move, None)
+
+                # change the turn of the virtual game for the next iteration - same is done for the defender (minimizing player)
+                new_game.next_player = Player.Defender
                 (eval, move_performed, depth_stat) = new_game.minimax_alpha_beta(depth - 1, False, alpha, beta)
 
                 # Pruning
@@ -780,9 +803,12 @@ class Game:
             min_eval = MAX_HEURISTIC_SCORE
             optimal_move = None
 
-            for move in possible_moves:
+            for move in possible_moves:                
+
                 new_game = self.clone()
                 new_game.perform_move(move, None)
+
+                new_game.next_player = Player.Attacker
                 (eval, move_performed, depth_stat) = new_game.minimax_alpha_beta(depth - 1, True, alpha, beta)
 
                 # Pruning
@@ -802,9 +828,9 @@ class Game:
         start_time = datetime.now()
 
         if self.next_player == Player.Attacker:
-            (score, move, avg_depth) = self.minimax_alpha_beta(10, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            (score, move, avg_depth) = self.minimax_alpha_beta(25, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
         else:
-            (score, move, avg_depth) = self.minimax_alpha_beta(10, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            (score, move, avg_depth) = self.minimax_alpha_beta(25, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
             
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
@@ -904,7 +930,7 @@ def main():
         game_type = GameType.CompVsDefender
     elif args.game_type == "manual":
         # TODO change at end to manual
-        game_type = GameType.AttackerVsDefender 
+        game_type = GameType.CompVsComp 
     else:
         game_type = GameType.CompVsComp
 
@@ -1028,13 +1054,30 @@ def e0_heuristic(game: Game) -> int:
     defender_sum = 3 * dict_pieces[Player.Defender][UnitType.Virus] + 3 * dict_pieces[Player.Defender][UnitType.Tech] + 3 * dict_pieces[Player.Defender][UnitType.Firewall] + 3 * dict_pieces[Player.Defender][UnitType.Program] + 9999 * dict_pieces[Player.Defender][UnitType.AI]
     return (attacker_sum - defender_sum)
 
+
 def e0_heuristic_with_health(game: Game) -> int:
     (dict_pieces, health_attack, health_defend) = count_pieces_by_player(game)
+    return (health_attack - health_defend)
 
-    attacker_sum = health_attack
-    defender_sum = health_defend
 
-    return (attacker_sum - defender_sum)
+def e1_heuristic(game: Game) -> int:
+    (dict_pieces, health_attack, health_defend) = count_pieces_by_player(game)
+
+    virus_att_pwr = dict_pieces[Player.Attacker][UnitType.Virus] * (9 * dict_pieces[Player.Defender][UnitType.AI] + 3 * dict_pieces[Player.Defender][UnitType.Tech] + 1 * dict_pieces[Player.Defender][UnitType.Firewall] + 6 * dict_pieces[Player.Defender][UnitType.Program])
+    firewall_att_pwr = dict_pieces[Player.Attacker][UnitType.Firewall] * (dict_pieces[Player.Defender][UnitType.AI] +  dict_pieces[Player.Defender][UnitType.Tech] + dict_pieces[Player.Defender][UnitType.Firewall] + dict_pieces[Player.Defender][UnitType.Program])
+    program_att_pwr = dict_pieces[Player.Attacker][UnitType.Program] * (3 * dict_pieces[Player.Defender][UnitType.AI] + 3 * dict_pieces[Player.Defender][UnitType.Tech] + 1 * dict_pieces[Player.Defender][UnitType.Firewall] + 3 * dict_pieces[Player.Defender][UnitType.Program])
+    ai_att_pwr = dict_pieces[Player.Attacker][UnitType.AI] * (3 * dict_pieces[Player.Defender][UnitType.AI] + 3 * dict_pieces[Player.Defender][UnitType.Tech] + 1 * dict_pieces[Player.Defender][UnitType.Firewall] + 3 * dict_pieces[Player.Defender][UnitType.Program])
+
+    tech_def_pwr = dict_pieces[Player.Defender][UnitType.Tech] * (1 * dict_pieces[Player.Attacker][UnitType.AI] + 6 * dict_pieces[Player.Attacker][UnitType.Virus] + 1 * dict_pieces[Player.Attacker][UnitType.Firewall] + 1 * dict_pieces[Player.Attacker][UnitType.Program])
+    firewall_def_pwr = dict_pieces[Player.Defender][UnitType.Firewall] * (dict_pieces[Player.Attacker][UnitType.AI] +  dict_pieces[Player.Attacker][UnitType.Virus] + dict_pieces[Player.Attacker][UnitType.Firewall] + dict_pieces[Player.Attacker][UnitType.Program])
+    program_def_pwr = dict_pieces[Player.Defender][UnitType.Program] * (3 * dict_pieces[Player.Attacker][UnitType.AI] + 3 * dict_pieces[Player.Attacker][UnitType.Virus] + 1 * dict_pieces[Player.Attacker][UnitType.Firewall] + 3 * dict_pieces[Player.Attacker][UnitType.Program])
+    ai_def_pwr = dict_pieces[Player.Defender][UnitType.AI] * (3 * dict_pieces[Player.Attacker][UnitType.AI] + 3 * dict_pieces[Player.Attacker][UnitType.Virus] + 1 * dict_pieces[Player.Attacker][UnitType.Firewall] + 3 * dict_pieces[Player.Attacker][UnitType.Program])
+
+    attacker_stats = health_attack + virus_att_pwr + firewall_att_pwr + program_att_pwr + ai_att_pwr
+    defender_stats = health_defend + tech_def_pwr + firewall_def_pwr + program_def_pwr + ai_def_pwr
+    return (attacker_stats - defender_stats)
+
+
 
 if __name__ == "__main__":
     main()
