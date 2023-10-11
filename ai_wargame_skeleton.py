@@ -430,8 +430,6 @@ class Game:
         sourounding_coords = self.get_sourounding_units(src)
         suicide_unit = self.get(src)
 
-        #TODO: find where this bug is comming from - suicide unit has health zero - somewhere in the code
-        # we do not remove dead units - this is likely to the way we pass the board copy in minimax
         if suicide_unit is None:
             return
 
@@ -747,15 +745,66 @@ class Game:
                     optimal_move = move
 
             return min_eval, optimal_move, 0
+        
+
+    def minimax_alpha_beta(self, depth: int, is_maxiPlayer: bool, alpha: int, beta :int) -> (int, CoordPair, int):
+        if depth == 0:
+            # OG e0() heuristic
+            return e0_heuristic(self), None, depth
+            # modified e0() to test health
+            # return e0_heuristic_with_health(self), None, depth
+        
+        possible_moves = self.move_candidates()
+
+        if is_maxiPlayer:
+            max_eval = MIN_HEURISTIC_SCORE
+            optimal_move = None
+
+            for move in possible_moves:
+                new_game = self.clone()
+                new_game.perform_move(move, None)
+                (eval, move_performed, depth_stat) = new_game.minimax_alpha_beta(depth - 1, False, alpha, beta)
+
+                # Pruning
+                alpha = max(alpha, eval)
+                if beta <= alpha:
+                    break
+
+                if max_eval < eval:
+                    max_eval = eval
+                    optimal_move = move
+
+            return max_eval, optimal_move, 0
+        
+        else:
+            min_eval = MAX_HEURISTIC_SCORE
+            optimal_move = None
+
+            for move in possible_moves:
+                new_game = self.clone()
+                new_game.perform_move(move, None)
+                (eval, move_performed, depth_stat) = new_game.minimax_alpha_beta(depth - 1, True, alpha, beta)
+
+                # Pruning
+                beta = min(beta, eval)
+                if beta <= alpha:
+                    break
+
+                if min_eval > eval:
+                    min_eval = eval
+                    optimal_move = move
+
+            return min_eval, optimal_move, 0
+
 
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
         start_time = datetime.now()
 
         if self.next_player == Player.Attacker:
-            (score, move, avg_depth) = self.minimax(5, True)
+            (score, move, avg_depth) = self.minimax_alpha_beta(10, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
         else:
-            (score, move, avg_depth) = self.minimax(5, False)
+            (score, move, avg_depth) = self.minimax_alpha_beta(10, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
             
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
@@ -855,7 +904,7 @@ def main():
         game_type = GameType.CompVsDefender
     elif args.game_type == "manual":
         # TODO change at end to manual
-        game_type = GameType.CompVsComp 
+        game_type = GameType.AttackerVsDefender 
     else:
         game_type = GameType.CompVsComp
 
