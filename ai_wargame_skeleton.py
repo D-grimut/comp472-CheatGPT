@@ -699,11 +699,22 @@ class Game:
         move = CoordPair()
         for src, _ in self.player_units(self.next_player):
             move.src = src
+            piece = self.get(src)
+
             for dst in src.iter_adjacent():
                 move.dst = dst
-                if self.validate_move(move) is not MoveType.Invalid:
+                
+                move_type = self.validate_move(move)
+
+                if move_type is not MoveType.Invalid:
                     yield move.clone()
+
             move.dst = src
+
+            # Do not allow the AI to self destruct
+            if piece.type == UnitType.AI:
+                continue
+
             yield move.clone()
 
         
@@ -765,10 +776,10 @@ class Game:
             # return e0_heuristic_with_health(self), None, depth
 
             if is_maxiPlayer:
-                return e1_heuristic(self), None, depth
+                return e2_heuristic(self), None, depth
         
             if not is_maxiPlayer:
-                return e1_heuristic(self), None, depth
+                return e2_heuristic(self), None, depth
             
             
         possible_moves = self.move_candidates()
@@ -786,15 +797,15 @@ class Game:
 
                 # change the turn of the virtual game for the next iteration - same is done for the defender (minimizing player)
                 new_game.next_player = Player.Defender
-                (eval, move_performed, depth_stat) = new_game.minimax_alpha_beta(depth - 1, False, alpha, beta)
+                (state_heuristic, move_performed, depth_stat) = new_game.minimax_alpha_beta(depth - 1, False, alpha, beta)
 
                 # Pruning
-                alpha = max(alpha, eval)
+                alpha = max(alpha, state_heuristic)
                 if beta <= alpha:
                     break
 
-                if max_eval < eval:
-                    max_eval = eval
+                if max_eval < state_heuristic:
+                    max_eval = state_heuristic
                     optimal_move = move
 
             return max_eval, optimal_move, 0
@@ -809,15 +820,15 @@ class Game:
                 new_game.perform_move(move, None)
 
                 new_game.next_player = Player.Attacker
-                (eval, move_performed, depth_stat) = new_game.minimax_alpha_beta(depth - 1, True, alpha, beta)
+                (state_heuristic, move_performed, depth_stat) = new_game.minimax_alpha_beta(depth - 1, True, alpha, beta)
 
                 # Pruning
-                beta = min(beta, eval)
+                beta = min(beta, state_heuristic)
                 if beta <= alpha:
                     break
 
-                if min_eval > eval:
-                    min_eval = eval
+                if min_eval > state_heuristic:
+                    min_eval = state_heuristic
                     optimal_move = move
 
             return min_eval, optimal_move, 0
@@ -827,10 +838,11 @@ class Game:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
         start_time = datetime.now()
 
+        # (score, move, avg_depth) = self.minimax_alpha_beta(10, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
         if self.next_player == Player.Attacker:
-            (score, move, avg_depth) = self.minimax_alpha_beta(25, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            (score, move, avg_depth) = self.minimax_alpha_beta(10, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
         else:
-            (score, move, avg_depth) = self.minimax_alpha_beta(25, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            (score, move, avg_depth) = self.minimax_alpha_beta(10, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
             
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
@@ -1078,6 +1090,66 @@ def e1_heuristic(game: Game) -> int:
     return (attacker_stats - defender_stats)
 
 
+def find_optimal_oponent(attacking_piece: Unit):
+    opponents_damages = attacking_piece.damage_table[attacking_piece.type.value]
+    max = 0
+    max_opp_index = -1
+
+    for opp, value in enumerate(opponents_damages):
+        if value > max:
+            max = value
+            max_opp_index = opp
+
+    return UnitType(max_opp_index).name
+
+def BFS(game: Game, target: UnitType, src: Coord):
+    visited = []
+    queue = []
+
+    queue.append(src)
+    visited.append(src)
+
+    while queue:
+        node = queue.pop(0)
+        node_val = game.get(node)
+
+        if node_val and node_val.type.name == target and node_val.player != game.next_player:
+            return node
+
+        for adjecent in node.iter_adjacent():
+            if adjecent not in visited and game.is_valid_coord(adjecent):
+                visited.append(adjecent)
+                queue.append(adjecent)
+    
+
+def calc_distance(src : Coord, target : Coord) -> int:
+    src_x = src.row
+    src_y = src.col
+
+    targ_x = target.row
+    targ_y = target.col
+
+    answ = (((src_x - targ_x)**2 + (src_y - targ_y)**2)**0.5).__ceil__()
+
+    return answ
+
+
+# Attacker's heuristic - not finished - we are only caculating the disatnce between pieces - have to add damage to piece too
+def e2_heuristic(game: Game) -> int:
+    score = 0
+
+    for row_num, row in enumerate(game.board):
+        for col_num, piece in enumerate(row):
+            if piece and piece.player == Player.Attacker:
+                if piece.type != UnitType.AI:           
+
+                    max_dammage_opp = find_optimal_oponent(piece)
+                    temp_coord = Coord (row_num, col_num)
+                    target_coord = BFS(game, max_dammage_opp, temp_coord)
+                    distance = calc_distance(temp_coord, target_coord)
+                    
+
+    return score   
 
 if __name__ == "__main__":
     main()
