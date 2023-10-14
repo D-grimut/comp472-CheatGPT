@@ -523,60 +523,7 @@ class Game:
                 if(file is not None):
                     file.write(f"Move from {coords.src} to {coords.dst} - self destruct\n")
                 return (True, "")
-
-
-
-# OLD VALIDATIUON CODE - TODO REMOVE AT END
-        # # If unti is not existant, then no move should be done
-        # if unit_src is None:
-        #     return (False, "invalid move - no unit at this position")
-
-        # if unit_src.player != self.next_player:
-        #     return (False, "invalid move")
-
-        # # If des coord is same as source, self destruct
-        # if coords.src == coords.dst:
-        #     self.self_destruct(coords.src)
-        #     if(file is not None):
-        #         file.write(f"Move from {coords.src} to {coords.dst} - self destruct\n")
-        #     return (True, "")
-
-        # # Repair friendly if target is friendly (and exists)
-        # if (
-        #     unit_src is not None
-        #     and target is not None
-        #     and unit_src.type in [UnitType.Tech, UnitType.AI]
-        #     and target.player == self.next_player and unit_src.repair_amount(target) !=0
-        # ):
-        #     self.repair_friendly(target, unit_src, coords.dst, coords.src)
-        #     if(file is not None):
-        #         file.write(
-        #             f"Move from {coords.src} to {coords.dst} - repair unit {target.to_string()}\n"
-        #         )
-        #     return (True, "")
-
-        # # Attack enemy unit
-        # if unit_src is not None and self.check_combat(coords.src):
-        #     if target is not None and target.player != self.next_player:
-        #         self.combat_sequence(target, unit_src, coords.dst, coords.src)
-        #         if(file is not None):
-        #             file.write(
-        #                 f"Move from {coords.src} to {coords.dst} - {unit_src.to_string()} attacks {target.to_string()}\n"
-        #             )
-        #         return (True, "")
-        #     elif unit_src.type not in [UnitType.Tech, UnitType.Virus]:
-        #         return (
-        #             False,
-        #             "invalid move - engaged in combat, this piece cannot flee",
-        #         )
-
-        # if self.is_valid_move(coords):
-        #     self.set(coords.dst, self.get(coords.src))
-        #     self.set(coords.src, None)
-        #     if(file is not None):
-        #         file.write(f"Move from {coords.src} to {coords.dst}\n")
-        #     return (True, "")
-        # return (False, "invalid move")
+            
 
     def next_turn(self):
         """Transitions game to the next turn."""
@@ -706,6 +653,9 @@ class Game:
                 
                 move_type = self.validate_move(move)
 
+                if piece.type == UnitType.AI and move_type == MoveType.SelfDestruct:
+                    continue
+
                 if move_type is not MoveType.Invalid:
                     yield move.clone()
 
@@ -744,7 +694,7 @@ class Game:
                 new_game.next_player = Player.Defender
                 (eval, move_performed, depth_stat) = new_game.minimax(depth - 1, False)
 
-                if max_eval < eval:
+                if max_eval <= eval:
                     max_eval = eval
                     optimal_move = move
 
@@ -760,7 +710,7 @@ class Game:
                 new_game.next_player = Player.Attacker
                 (eval, move_performed, depth_stat) = new_game.minimax(depth - 1, True)
 
-                if min_eval > eval:
+                if min_eval >= eval:
                     min_eval = eval
                     optimal_move = move
 
@@ -779,7 +729,7 @@ class Game:
                 return e2_heuristic(self), None, depth
         
             if not is_maxiPlayer:
-                return e2_heuristic(self), None, depth
+                return e0_heuristic(self), None, depth
             
             
         possible_moves = self.move_candidates()
@@ -804,7 +754,7 @@ class Game:
                 if beta <= alpha:
                     break
 
-                if max_eval < state_heuristic:
+                if max_eval <= state_heuristic:
                     max_eval = state_heuristic
                     optimal_move = move
 
@@ -827,7 +777,7 @@ class Game:
                 if beta <= alpha:
                     break
 
-                if min_eval > state_heuristic:
+                if min_eval >= state_heuristic:
                     min_eval = state_heuristic
                     optimal_move = move
 
@@ -840,9 +790,9 @@ class Game:
 
         # (score, move, avg_depth) = self.minimax_alpha_beta(10, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
         if self.next_player == Player.Attacker:
-            (score, move, avg_depth) = self.minimax_alpha_beta(10, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            (score, move, avg_depth) = self.minimax_alpha_beta(11, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
         else:
-            (score, move, avg_depth) = self.minimax_alpha_beta(10, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            (score, move, avg_depth) = self.minimax_alpha_beta(11, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
             
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
@@ -1090,17 +1040,21 @@ def e1_heuristic(game: Game) -> int:
     return (attacker_stats - defender_stats)
 
 
-def find_optimal_oponent(attacking_piece: Unit):
+def find_optimal_oponent(attacking_piece: Unit, piece_count):
     opponents_damages = attacking_piece.damage_table[attacking_piece.type.value]
     max = 0
-    max_opp_index = -1
+    max_opp_index = 0
+
+    enemy_type = Player.Defender if attacking_piece.player == Player.Attacker else Player.Attacker
 
     for opp, value in enumerate(opponents_damages):
+        if piece_count[enemy_type][UnitType(opp)] == 0:
+            continue
         if value > max:
             max = value
             max_opp_index = opp
 
-    return UnitType(max_opp_index).name
+    return UnitType(max_opp_index), max
 
 def BFS(game: Game, target: UnitType, src: Coord):
     visited = []
@@ -1113,7 +1067,7 @@ def BFS(game: Game, target: UnitType, src: Coord):
         node = queue.pop(0)
         node_val = game.get(node)
 
-        if node_val and node_val.type.name == target and node_val.player != game.next_player:
+        if node_val and node_val.type == target and node_val.player != game.next_player:
             return node
 
         for adjecent in node.iter_adjacent():
@@ -1122,20 +1076,39 @@ def BFS(game: Game, target: UnitType, src: Coord):
                 queue.append(adjecent)
     
 
-def calc_distance(src : Coord, target : Coord) -> int:
+def calc_distance(src : Coord, target : Coord):
+
+
     src_x = src.row
     src_y = src.col
 
     targ_x = target.row
     targ_y = target.col
 
-    answ = (((src_x - targ_x)**2 + (src_y - targ_y)**2)**0.5).__ceil__()
+    answ = (((src_x - targ_x)**2 + (src_y - targ_y)**2)**0.5)
 
     return answ
 
 
 # Attacker's heuristic - not finished - we are only caculating the disatnce between pieces - have to add damage to piece too
 def e2_heuristic(game: Game) -> int:
+
+    piece_values = {
+        UnitType.Virus: 8,
+        UnitType.Tech: 8,
+        UnitType.Firewall: 3,
+        UnitType.Program: 5,
+        UnitType.AI: 10,        
+    }
+
+    (piece_count, health_attack, health_defender) = count_pieces_by_player(game)
+
+    if piece_count[Player.Attacker][UnitType.AI] == 0:
+        return -9999
+    
+    if piece_count[Player.Defender][UnitType.AI] == 0:
+        return 9999
+
     score = 0
 
     for row_num, row in enumerate(game.board):
@@ -1143,11 +1116,18 @@ def e2_heuristic(game: Game) -> int:
             if piece and piece.player == Player.Attacker:
                 if piece.type != UnitType.AI:           
 
-                    max_dammage_opp = find_optimal_oponent(piece)
-                    temp_coord = Coord (row_num, col_num)
-                    target_coord = BFS(game, max_dammage_opp, temp_coord)
-                    distance = calc_distance(temp_coord, target_coord)
+                    target_coord = None
+                    src_coord = Coord (row_num, col_num)
+
+                    max_dammage_opp, dammage = find_optimal_oponent(piece, piece_count)
+                    target_coord = BFS(game, max_dammage_opp, src_coord)
+
+                    distance = calc_distance(src_coord, target_coord)
                     
+                    # Check if hp =< 2, then check if self destruct would damage more health of enemy and less your friendlies.
+
+                    piece_heuristic = (dammage * (piece_values[max_dammage_opp] - distance)).__ceil__()
+                    score += piece_heuristic
 
     return score   
 
