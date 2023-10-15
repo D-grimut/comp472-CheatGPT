@@ -677,7 +677,7 @@ class Game:
 
 
             if is_maxiPlayer:
-                return e1_heuristic(self), None, depth
+                return e1_attacker_heuristic(self), None, depth
         
             if not is_maxiPlayer:
                 return e0_heuristic(self), None, depth
