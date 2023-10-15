@@ -1116,7 +1116,7 @@ def e1_attacker_heuristic(game: Game) -> int:
 
     for row_num, row in enumerate(game.board):
         for col_num, piece in enumerate(row):
-            if piece and piece.player == Player.Attacker:           
+            if piece and piece.player == game.next_player:           
 
                     src_coord = Coord (row_num, col_num)
 
