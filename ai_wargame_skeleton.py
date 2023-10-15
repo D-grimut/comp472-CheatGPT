@@ -1131,5 +1131,46 @@ def e2_heuristic(game: Game) -> int:
 
     return score   
 
+def e2_defender_heurisitc(game: Game) -> int:
+    (piece_count, health_attack, health_defender) = count_pieces_by_player(game)
+
+    if piece_count[Player.Attacker][UnitType.AI] == 0:
+        return -9999
+    
+    if piece_count[Player.Defender][UnitType.AI] == 0:
+        return 9999
+
+    score = 0
+
+    for row_num, row in enumerate(game.board):
+        for col_num, piece in enumerate(row):
+            if piece and piece.player == game.next_player:
+                src_coord = Coord (row_num, col_num)
+
+                for adj in src_coord.iter_adjacent():
+                    enemy_piece = game.get(adj)
+
+                    if enemy_piece and enemy_piece.player != piece.player:
+
+                        if (piece.health - enemy_piece.damage_amount <= 0):
+
+                            # Find our piece that can heal, if it exists
+                            if piece_count[Player.Defender][UnitType.Tech] > 0: 
+                                target_coord = BFS(game, UnitType.Tech, src_coord)
+
+                                distance = calc_distance(src_coord, target_coord)
+
+                                # piece_heuristic = (dammage * (piece_values[max_dammage_opp] - distance)).__ceil__()
+                                score += piece_heuristic
+                                
+                            elif piece_count[Player.Defender][UnitType.AI] > 0:
+                                target_coord = BFS(game, UnitType.AI, src_coord)
+
+                                distance = calc_distance(src_coord, target_coord)
+
+                                score += piece_heuristic
+
+    return score   
+
 if __name__ == "__main__":
     main()
