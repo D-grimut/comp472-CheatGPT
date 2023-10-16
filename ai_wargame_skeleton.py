@@ -668,19 +668,13 @@ class Game:
             yield move.clone()
 
         
-    def minimax(self, depth: int, is_maxiPlayer: bool) -> (int, CoordPair, int):
+    def minimax(self, depth: int, is_maxiPlayer: bool) -> (int, CoordPair):
         if depth == 0:
-            # OG e0() heuristic
-            # return e0_heuristic(self), None, depth
-            # modified e0() to test health
-            # return e0_heuristic_with_health(self), None, depth
-
-
             if is_maxiPlayer:
-                return e1_heuristic(self), None, depth
+                return e1_heuristic(self), None
         
             if not is_maxiPlayer:
-                return e0_heuristic(self), None, depth
+                return e0_heuristic(self), None
         
         possible_moves = self.move_candidates()
 
@@ -692,13 +686,13 @@ class Game:
                 new_game = self.clone()
                 new_game.perform_move(move, None)
                 new_game.next_player = Player.Defender
-                (eval, move_performed, depth_stat) = new_game.minimax(depth - 1, False)
+                (eval, move_performed) = new_game.minimax(depth - 1, False)
 
                 if max_eval <= eval:
                     max_eval = eval
                     optimal_move = move
 
-            return max_eval, optimal_move, 0
+            return max_eval, optimal_move
         
         else:
             min_eval = MAX_HEURISTIC_SCORE
@@ -708,28 +702,22 @@ class Game:
                 new_game = self.clone()
                 new_game.perform_move(move, None)
                 new_game.next_player = Player.Attacker
-                (eval, move_performed, depth_stat) = new_game.minimax(depth - 1, True)
+                (eval, move_performed) = new_game.minimax(depth - 1, True)
 
                 if min_eval >= eval:
                     min_eval = eval
                     optimal_move = move
 
-            return min_eval, optimal_move, 0
+            return min_eval, optimal_move
         
 
-    def minimax_alpha_beta(self, depth: int, is_maxiPlayer: bool, alpha: int, beta :int) -> (int, CoordPair, int):
+    def minimax_alpha_beta(self, depth: int, is_maxiPlayer: bool, alpha: int, beta :int) -> (int, CoordPair):
         if depth == 0 or self.is_finished():
-
-            # OG e0() heuristic
-            # return e0_heuristic(self), None, depth
-            # modified e0() to test health
-            # return e0_heuristic_with_health(self), None, depth
-
             if is_maxiPlayer:
-                return e2_heuristic(self), None, depth
+                return e2_heuristic(self), None
         
             if not is_maxiPlayer:
-                return e0_heuristic(self), None, depth
+                return e0_heuristic(self), None
             
             
         possible_moves = self.move_candidates()
@@ -747,7 +735,7 @@ class Game:
 
                 # change the turn of the virtual game for the next iteration - same is done for the defender (minimizing player)
                 new_game.next_player = Player.Defender
-                (state_heuristic, move_performed, depth_stat) = new_game.minimax_alpha_beta(depth - 1, False, alpha, beta)
+                (state_heuristic, move_performed) = new_game.minimax_alpha_beta(depth - 1, False, alpha, beta)
 
                 # Pruning
                 alpha = max(alpha, state_heuristic)
@@ -758,7 +746,7 @@ class Game:
                     max_eval = state_heuristic
                     optimal_move = move
 
-            return max_eval, optimal_move, 0
+            return max_eval, optimal_move
         
         else:
             min_eval = MAX_HEURISTIC_SCORE
@@ -770,7 +758,7 @@ class Game:
                 new_game.perform_move(move, None)
 
                 new_game.next_player = Player.Attacker
-                (state_heuristic, move_performed, depth_stat) = new_game.minimax_alpha_beta(depth - 1, True, alpha, beta)
+                (state_heuristic, move_performed) = new_game.minimax_alpha_beta(depth - 1, True, alpha, beta)
 
                 # Pruning
                 beta = min(beta, state_heuristic)
@@ -781,7 +769,7 @@ class Game:
                     min_eval = state_heuristic
                     optimal_move = move
 
-            return min_eval, optimal_move, 0
+            return min_eval, optimal_move
 
 
     def suggest_move(self) -> CoordPair | None:
@@ -790,14 +778,13 @@ class Game:
 
         # (score, move, avg_depth) = self.minimax_alpha_beta(10, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
         if self.next_player == Player.Attacker:
-            (score, move, avg_depth) = self.minimax_alpha_beta(11, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            (score, move) = self.minimax_alpha_beta(11, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
         else:
-            (score, move, avg_depth) = self.minimax_alpha_beta(11, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            (score, move) = self.minimax_alpha_beta(11, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
             
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
         print(f"Heuristic score: {score}")
-        print(f"Average recursive depth: {avg_depth:0.1f}")
         print(f"Evals per depth: ", end="")
         for k in sorted(self.stats.evaluations_per_depth.keys()):
             print(f"{k}:{self.stats.evaluations_per_depth[k]} ", end="")
