@@ -677,7 +677,7 @@ class Game:
 
 
             if is_maxiPlayer:
-                return e1_attacker_heuristic(self), None, depth
+                return e0_heuristic(self), None, depth
         
             if not is_maxiPlayer:
                 return e0_heuristic(self), None, depth
@@ -726,10 +726,10 @@ class Game:
             # return e0_heuristic_with_health(self), None, depth
 
             if is_maxiPlayer:
-                return e1_attacker_heuristic(self), None, depth
+                return e1_heuristic(self), None, depth
         
             if not is_maxiPlayer:
-                return e0_heuristic(self), None, depth
+                return e2_heuristic(self), None, depth
             
             
         possible_moves = self.move_candidates()
@@ -790,9 +790,9 @@ class Game:
 
         # (score, move, avg_depth) = self.minimax_alpha_beta(10, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
         if self.next_player == Player.Attacker:
-            (score, move, avg_depth) = self.minimax_alpha_beta(10, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            (score, move, avg_depth) = self.minimax_alpha_beta(13, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
         else:
-            (score, move, avg_depth) = self.minimax_alpha_beta(10, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            (score, move, avg_depth) = self.minimax_alpha_beta(13, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
             
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
@@ -1017,12 +1017,12 @@ def e0_heuristic(game: Game) -> int:
     return (attacker_sum - defender_sum)
 
 
-def e0_heuristic_with_health(game: Game) -> int:
+# Sum of attack power
+# Compute the total sum of attack power of atack pieces, and defender,
+# substarct both while also taking inconcideration the total health of the defender and attacker
+def e1_heuristic(game: Game) -> int:
+
     (dict_pieces, health_attack, health_defend) = count_pieces_by_player(game)
-    return (health_attack - health_defend)
-
-
-def attack_power(dict_pieces, health_attack, health_defend) -> int:
 
     virus_att_pwr = dict_pieces[Player.Attacker][UnitType.Virus] * (9 * dict_pieces[Player.Defender][UnitType.AI] + 3 * dict_pieces[Player.Defender][UnitType.Tech] + 1 * dict_pieces[Player.Defender][UnitType.Firewall] + 6 * dict_pieces[Player.Defender][UnitType.Program])
     firewall_att_pwr = dict_pieces[Player.Attacker][UnitType.Firewall] * (dict_pieces[Player.Defender][UnitType.AI] +  dict_pieces[Player.Defender][UnitType.Tech] + dict_pieces[Player.Defender][UnitType.Firewall] + dict_pieces[Player.Defender][UnitType.Program])
@@ -1090,15 +1090,25 @@ def calc_distance(src : Coord, target : Coord):
     return answ
 
 
-# Attacker's heuristic 
-def e1_attacker_heuristic(game: Game) -> int:
+# Heuristic 2 - e2()
+# If attacker - minimise distance with high value peices
+# If deffender - maximise distance with high value peices
+def e2_heuristic(game: Game) -> int:
 
-    piece_values = {
+    piece_values_attacker = {
         UnitType.Virus: 8,
         UnitType.Tech: 8,
         UnitType.Firewall: 3,
         UnitType.Program: 5,
         UnitType.AI: 10,        
+    }
+
+    piece_values_deffender = {
+        UnitType.Virus: 10,
+        UnitType.Tech: 10,
+        UnitType.Firewall: 5,
+        UnitType.Program: 3,
+        UnitType.AI: 1,        
     }
 
     (piece_count, health_attack, health_defender) = count_pieces_by_player(game)
@@ -1112,7 +1122,6 @@ def e1_attacker_heuristic(game: Game) -> int:
     score = 0
 
     health_bonus = health_attack - health_defender
-    attack_power_bonus = attack_power(piece_count, health_attack, health_defender)
 
     for row_num, row in enumerate(game.board):
         for col_num, piece in enumerate(row):
@@ -1125,14 +1134,15 @@ def e1_attacker_heuristic(game: Game) -> int:
 
                     distance = calc_distance(src_coord, target_coord)
 
-                    piece_heuristic = (dammage * (piece_values[max_dammage_opp] - distance)).__ceil__()
+                    if game.next_player == Player.Attacker:
+                        piece_heuristic = (dammage * (piece_values_attacker[max_dammage_opp] - distance)).__ceil__()
 
                     if game.next_player == Player.Defender:
-                        piece_heuristic *= -1
+                        piece_heuristic = (distance * (dammage - piece_values_deffender[max_dammage_opp])).__ceil__()
 
                     score += piece_heuristic
 
-    return (score + health_bonus + attack_power_bonus)   
+    return (score + health_bonus)   
 
 if __name__ == "__main__":
     main()
