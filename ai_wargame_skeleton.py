@@ -788,11 +788,17 @@ class Game:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
         start_time = datetime.now()
 
-        # (score, move, avg_depth) = self.minimax_alpha_beta(10, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
-        if self.next_player == Player.Attacker:
-            (score, move, avg_depth) = self.minimax_alpha_beta(11, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+        if(self.options.alpha_beta == True):
+            # (score, move, avg_depth) = self.minimax_alpha_beta(10, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            if self.next_player == Player.Attacker:
+                (score, move, avg_depth) = self.minimax_alpha_beta(self.options.max_depth, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            else:
+                (score, move, avg_depth) = self.minimax_alpha_beta(self.options.max_depth, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
         else:
-            (score, move, avg_depth) = self.minimax_alpha_beta(11, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            if self.next_player == Player.Attacker:
+                (score, move, avg_depth) = self.minimax(self.options.max_depth, True)
+            else:
+                (score, move, avg_depth) = self.minimax(self.options.max_depth, False)
             
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
@@ -883,6 +889,7 @@ def main():
     )
     parser.add_argument("--broker", type=str, help="play via a game broker")
     parser.add_argument("--max_turns", type=int, help="maximum turns")
+    parser.add_argument("--alpha_beta", type=bool, help="toggle alpha-beta")
     args = parser.parse_args()
 
     # parse the game type
@@ -891,8 +898,7 @@ def main():
     elif args.game_type == "defender":
         game_type = GameType.CompVsDefender
     elif args.game_type == "manual":
-        # TODO change at end to manual
-        game_type = GameType.CompVsComp 
+        game_type = GameType.AttackerVsDefender 
     else:
         game_type = GameType.CompVsComp
 
@@ -908,6 +914,8 @@ def main():
         options.broker = args.broker
     if args.max_turns is not None:
         options.max_turns = args.max_turns
+    if args.alpha_beta is not None:
+        options.alpha_beta = args.alpha_beta
 
     # create a new game
     game = Game(options=options)
@@ -1077,8 +1085,6 @@ def BFS(game: Game, target: UnitType, src: Coord):
     
 
 def calc_distance(src : Coord, target : Coord):
-
-
     src_x = src.row
     src_y = src.col
 
@@ -1128,47 +1134,6 @@ def e2_heuristic(game: Game) -> int:
 
                     piece_heuristic = (dammage * (piece_values[max_dammage_opp] - distance)).__ceil__()
                     score += piece_heuristic
-
-    return score   
-
-def e2_defender_heurisitc(game: Game) -> int:
-    (piece_count, health_attack, health_defender) = count_pieces_by_player(game)
-
-    if piece_count[Player.Attacker][UnitType.AI] == 0:
-        return -9999
-    
-    if piece_count[Player.Defender][UnitType.AI] == 0:
-        return 9999
-
-    score = 0
-
-    for row_num, row in enumerate(game.board):
-        for col_num, piece in enumerate(row):
-            if piece and piece.player == game.next_player:
-                src_coord = Coord (row_num, col_num)
-
-                for adj in src_coord.iter_adjacent():
-                    enemy_piece = game.get(adj)
-
-                    if enemy_piece and enemy_piece.player != piece.player:
-
-                        if (piece.health - enemy_piece.damage_amount <= 0):
-
-                            # Find our piece that can heal, if it exists
-                            if piece_count[Player.Defender][UnitType.Tech] > 0: 
-                                target_coord = BFS(game, UnitType.Tech, src_coord)
-
-                                distance = calc_distance(src_coord, target_coord)
-
-                                # piece_heuristic = (dammage * (piece_values[max_dammage_opp] - distance)).__ceil__()
-                                score += piece_heuristic
-                                
-                            elif piece_count[Player.Defender][UnitType.AI] > 0:
-                                target_coord = BFS(game, UnitType.AI, src_coord)
-
-                                distance = calc_distance(src_coord, target_coord)
-
-                                score += piece_heuristic
 
     return score   
 
