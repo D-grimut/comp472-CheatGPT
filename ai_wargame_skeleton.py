@@ -726,7 +726,7 @@ class Game:
             # return e0_heuristic_with_health(self), None, depth
 
             if is_maxiPlayer:
-                return e1_heuristic(self), None, depth
+                return e2_heuristic(self), None, depth
         
             if not is_maxiPlayer:
                 return e2_heuristic(self), None, depth
@@ -790,9 +790,9 @@ class Game:
 
         # (score, move, avg_depth) = self.minimax_alpha_beta(10, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
         if self.next_player == Player.Attacker:
-            (score, move, avg_depth) = self.minimax_alpha_beta(13, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            (score, move, avg_depth) = self.minimax_alpha_beta(10, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
         else:
-            (score, move, avg_depth) = self.minimax_alpha_beta(13, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+            (score, move, avg_depth) = self.minimax_alpha_beta(10, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
             
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
@@ -1047,13 +1047,22 @@ def find_optimal_oponent(attacking_piece: Unit, piece_count):
 
     enemy_type = Player.Defender if attacking_piece.player == Player.Attacker else Player.Attacker
 
-    for opp, value in enumerate(opponents_damages):
-        if piece_count[enemy_type][UnitType(opp)] == 0:
-            continue
-        if value > max:
-            max = value
-            max_opp_index = opp
+    if enemy_type != Player.Defender:
+        for opp, value in enumerate(opponents_damages):
+            if piece_count[enemy_type][UnitType(opp)] == 0:
+                continue
+            if value > max:
+                max = value
+                max_opp_index = opp
 
+    else:
+        for i in [0,1,2,3,4]:
+            if piece_count[enemy_type][UnitType(i)] == 0:
+                continue
+            if attacking_piece.damage_table[i][attacking_piece.type.value] > max:
+                max = attacking_piece.damage_table[i][attacking_piece.type.value]
+                max_opp_index = i
+ 
     return UnitType(max_opp_index), max
 
 def BFS(game: Game, target: UnitType, src: Coord):
