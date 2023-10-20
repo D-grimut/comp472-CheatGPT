@@ -671,7 +671,7 @@ class Game:
     def minimax(self, depth: int, is_maxiPlayer: bool) -> (int, CoordPair):
         if depth == 0:
             if is_maxiPlayer:
-                return e1_heuristic(self), None
+                return e0_heuristic(self), None, depth
         
             if not is_maxiPlayer:
                 return e0_heuristic(self), None
@@ -717,7 +717,7 @@ class Game:
                 return e2_heuristic(self), None
         
             if not is_maxiPlayer:
-                return e0_heuristic(self), None
+                return e2_heuristic(self), None, depth
             
             
         possible_moves = self.move_candidates()
@@ -1011,12 +1011,11 @@ def e0_heuristic(game: Game) -> int:
     return (attacker_sum - defender_sum)
 
 
-def e0_heuristic_with_health(game: Game) -> int:
-    (dict_pieces, health_attack, health_defend) = count_pieces_by_player(game)
-    return (health_attack - health_defend)
-
-
+# Sum of attack power
+# Compute the total sum of attack power of atack pieces, and defender,
+# substarct both while also taking inconcideration the total health of the defender and attacker
 def e1_heuristic(game: Game) -> int:
+
     (dict_pieces, health_attack, health_defend) = count_pieces_by_player(game)
 
     virus_att_pwr = dict_pieces[Player.Attacker][UnitType.Virus] * (9 * dict_pieces[Player.Defender][UnitType.AI] + 3 * dict_pieces[Player.Defender][UnitType.Tech] + 1 * dict_pieces[Player.Defender][UnitType.Firewall] + 6 * dict_pieces[Player.Defender][UnitType.Program])
@@ -1031,8 +1030,9 @@ def e1_heuristic(game: Game) -> int:
 
     attacker_stats = health_attack + virus_att_pwr + firewall_att_pwr + program_att_pwr + ai_att_pwr
     defender_stats = health_defend + tech_def_pwr + firewall_def_pwr + program_def_pwr + ai_def_pwr
-    return (attacker_stats - defender_stats)
 
+    return (attacker_stats - defender_stats)
+   
 
 def find_optimal_oponent(attacking_piece: Unit, piece_count):
     opponents_damages = attacking_piece.damage_table[attacking_piece.type.value]
@@ -1041,13 +1041,22 @@ def find_optimal_oponent(attacking_piece: Unit, piece_count):
 
     enemy_type = Player.Defender if attacking_piece.player == Player.Attacker else Player.Attacker
 
-    for opp, value in enumerate(opponents_damages):
-        if piece_count[enemy_type][UnitType(opp)] == 0:
-            continue
-        if value > max:
-            max = value
-            max_opp_index = opp
+    if enemy_type != Player.Defender:
+        for opp, value in enumerate(opponents_damages):
+            if piece_count[enemy_type][UnitType(opp)] == 0:
+                continue
+            if value > max:
+                max = value
+                max_opp_index = opp
 
+    else:
+        for i in [0,1,2,3,4]:
+            if piece_count[enemy_type][UnitType(i)] == 0:
+                continue
+            if attacking_piece.damage_table[i][attacking_piece.type.value] > max:
+                max = attacking_piece.damage_table[i][attacking_piece.type.value]
+                max_opp_index = i
+ 
     return UnitType(max_opp_index), max
 
 def BFS(game: Game, target: UnitType, src: Coord):
@@ -1082,15 +1091,25 @@ def calc_distance(src : Coord, target : Coord):
     return answ
 
 
-# Attacker's heuristic - not finished - we are only caculating the disatnce between pieces - have to add damage to piece too
+# Heuristic 2 - e2()
+# If attacker - minimise distance with high value peices
+# If deffender - maximise distance with high value peices
 def e2_heuristic(game: Game) -> int:
 
-    piece_values = {
+    piece_values_attacker = {
         UnitType.Virus: 8,
         UnitType.Tech: 8,
         UnitType.Firewall: 3,
         UnitType.Program: 5,
         UnitType.AI: 10,        
+    }
+
+    piece_values_deffender = {
+        UnitType.Virus: 10,
+        UnitType.Tech: 10,
+        UnitType.Firewall: 5,
+        UnitType.Program: 3,
+        UnitType.AI: 1,        
     }
 
     (piece_count, health_attack, health_defender) = count_pieces_by_player(game)
@@ -1103,25 +1122,28 @@ def e2_heuristic(game: Game) -> int:
 
     score = 0
 
+    health_bonus = health_attack - health_defender
+
     for row_num, row in enumerate(game.board):
         for col_num, piece in enumerate(row):
-            if piece and piece.player == Player.Attacker:
-                if piece.type != UnitType.AI:           
+            if piece and piece.player == game.next_player:           
 
-                    target_coord = None
                     src_coord = Coord (row_num, col_num)
 
                     max_dammage_opp, dammage = find_optimal_oponent(piece, piece_count)
                     target_coord = BFS(game, max_dammage_opp, src_coord)
 
                     distance = calc_distance(src_coord, target_coord)
-                    
-                    # Check if hp =< 2, then check if self destruct would damage more health of enemy and less your friendlies.
 
-                    piece_heuristic = (dammage * (piece_values[max_dammage_opp] - distance)).__ceil__()
+                    if game.next_player == Player.Attacker:
+                        piece_heuristic = (dammage * (piece_values_attacker[max_dammage_opp] - distance)).__ceil__()
+
+                    if game.next_player == Player.Defender:
+                        piece_heuristic = (distance * (dammage - piece_values_deffender[max_dammage_opp])).__ceil__()
+
                     score += piece_heuristic
 
-    return score   
+    return (score + health_bonus)   
 
 if __name__ == "__main__":
     main()
