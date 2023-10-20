@@ -1,7 +1,7 @@
 from __future__ import annotations
 import argparse
 import copy
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from dataclasses import dataclass, field
 from time import sleep
@@ -379,12 +379,11 @@ class Game:
             self.remove_dead(source_coord)
 
     def is_valid_advance(self, coords: CoordPair) -> bool:
-
         unit_src = self.get(coords.src)
 
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
             return False
-        
+
         if coords.dst not in coords.src.iter_adjacent():
             return False
 
@@ -403,7 +402,11 @@ class Game:
     # validate atacker piece movement
     def validate_atacker_move(self, unit, dest, src):
         if unit.type in [UnitType.Program, UnitType.Firewall, UnitType.AI]:
-            if dest in [Coord(src.row - 1, src.col), Coord(src.row, src.col - 1), Coord(src.row, src.col)]:
+            if dest in [
+                Coord(src.row - 1, src.col),
+                Coord(src.row, src.col - 1),
+                Coord(src.row, src.col),
+            ]:
                 return True
             return False
         else:
@@ -412,7 +415,11 @@ class Game:
     # validate defender piece movement
     def validate_defender_move(self, unit, dest, src):
         if unit.type in [UnitType.Program, UnitType.Firewall, UnitType.AI]:
-            if dest in [Coord(src.row + 1, src.col), Coord(src.row, src.col + 1), Coord(src.row, src.col)]:
+            if dest in [
+                Coord(src.row + 1, src.col),
+                Coord(src.row, src.col + 1),
+                Coord(src.row, src.col),
+            ]:
                 return True
             return False
         else:
@@ -444,7 +451,7 @@ class Game:
                 if entity.health <= 0:
                     self.remove_dead(src)
 
-        # Remove the self destructed unit    
+        # Remove the self destructed unit
         suicide_unit.health = 0
         self.remove_dead(src)
 
@@ -454,29 +461,29 @@ class Game:
 
         if unit_src is None or unit_src.player != self.next_player:
             return MoveType.Invalid
-        
+
         if coords.src == coords.dst:
             return MoveType.SelfDestruct
-        
+
         elif (
             target is not None
             and unit_src.type in [UnitType.Tech, UnitType.AI]
-            and target.player == self.next_player and unit_src.repair_amount(target) !=0
+            and target.player == self.next_player
+            and unit_src.repair_amount(target) != 0
         ):
             return MoveType.Repair
-        
+
         elif self.check_combat(coords.src):
-            if target is not None and target.player != self.next_player:               
+            if target is not None and target.player != self.next_player:
                 return MoveType.Attack
-            
+
             elif unit_src.type not in [UnitType.Tech, UnitType.Virus]:
                 return MoveType.Invalid
-        
+
         if self.is_valid_advance(coords):
             return MoveType.Advance
-            
+
         return MoveType.Invalid
-    
 
     def repair_friendly(
         self, target: Unit, src: Unit, targ_coord: Coord, source_coord: Coord
@@ -484,44 +491,45 @@ class Game:
         hp_gained = src.repair_amount(target)
         target.mod_health(hp_gained)
 
-
     def perform_move(self, coords: CoordPair, file) -> Tuple[bool, str]:
         unit_src = self.get(coords.src)
         target = self.get(coords.dst)
 
         move_type = self.validate_move(coords)
 
-        if(move_type is MoveType.Invalid):
+        if move_type is MoveType.Invalid:
             return (False, "invalid move")
-        
-        if(move_type is MoveType.Repair):
+
+        if move_type is MoveType.Repair:
             self.repair_friendly(target, unit_src, coords.dst, coords.src)
-            if(file is not None):
+            if file is not None:
                 file.write(
                     f"Move from {coords.src} to {coords.dst} - repair unit {target.to_string()}\n"
                 )
             return (True, "")
-        
-        if(move_type is MoveType.Attack):
+
+        if move_type is MoveType.Attack:
             self.combat_sequence(target, unit_src, coords.dst, coords.src)
-            if(file is not None):
+            if file is not None:
                 file.write(
                     f"Move from {coords.src} to {coords.dst} - {unit_src.to_string()} attacks {target.to_string()}\n"
                 )
             return (True, "")
-        
-        if(move_type is MoveType.Advance):
+
+        if move_type is MoveType.Advance:
             self.set(coords.dst, self.get(coords.src))
             self.set(coords.src, None)
-            if(file is not None):
+            if file is not None:
                 file.write(f"Move from {coords.src} to {coords.dst}\n")
             return (True, "")
-        
-        if (move_type is MoveType.SelfDestruct):
+
+        if move_type is MoveType.SelfDestruct:
             if coords.src == coords.dst:
                 self.self_destruct(coords.src)
-                if(file is not None):
-                    file.write(f"Move from {coords.src} to {coords.dst} - self destruct\n")
+                if file is not None:
+                    file.write(
+                        f"Move from {coords.src} to {coords.dst} - self destruct\n"
+                    )
                 return (True, "")
             
 
@@ -632,13 +640,16 @@ class Game:
 
     def has_winner(self) -> Player | None:
         """Check if the game is over and returns winner"""
-        if self.options.max_turns is not None and self.turns_played >= self.options.max_turns:
+        if (
+            self.options.max_turns is not None
+            and self.turns_played >= self.options.max_turns
+        ):
             return Player.Defender
         if self._attacker_has_ai:
             if self._defender_has_ai:
                 return None
             else:
-                return Player.Attacker    
+                return Player.Attacker
         return Player.Defender
 
     def move_candidates(self) -> Iterable[CoordPair]:
@@ -650,7 +661,7 @@ class Game:
 
             for dst in src.iter_adjacent():
                 move.dst = dst
-                
+
                 move_type = self.validate_move(move)
 
                 if piece.type == UnitType.AI and move_type == MoveType.SelfDestruct:
@@ -667,15 +678,23 @@ class Game:
 
             yield move.clone()
 
-        
-    def minimax(self, depth: int, is_maxiPlayer: bool) -> (int, CoordPair):
-        if depth == 0:
+    def minimax(
+        self, depth: int, is_maxiPlayer: bool, start_time
+    ) -> (int, CoordPair, int):
+        if depth == 0 or datetime.now() > start_time + timedelta(
+            seconds=self.options.max_time
+        ):
+            # OG e0() heuristic
+            # return e0_heuristic(self), None, depth
+            # modified e0() to test health
+            # return e0_heuristic_with_health(self), None, depth
+
             if is_maxiPlayer:
-                return e0_heuristic(self), None, depth
-        
+                return e1_heuristic(self), None, depth
+
             if not is_maxiPlayer:
-                return e0_heuristic(self), None
-        
+                return e0_heuristic(self), None, depth
+
         possible_moves = self.move_candidates()
 
         if is_maxiPlayer:
@@ -686,14 +705,21 @@ class Game:
                 new_game = self.clone()
                 new_game.perform_move(move, None)
                 new_game.next_player = Player.Defender
-                (eval, move_performed) = new_game.minimax(depth - 1, False)
+                (eval, move_performed, depth_stat) = new_game.minimax(
+                    depth - 1, False, start_time
+                )
 
                 if max_eval <= eval:
                     max_eval = eval
                     optimal_move = move
 
-            return max_eval, optimal_move
-        
+                    if datetime.now() > start_time + timedelta(
+                        seconds=self.options.max_time
+                    ):
+                        break
+
+            return max_eval, optimal_move, 0
+
         else:
             min_eval = MAX_HEURISTIC_SCORE
             optimal_move = None
@@ -702,24 +728,40 @@ class Game:
                 new_game = self.clone()
                 new_game.perform_move(move, None)
                 new_game.next_player = Player.Attacker
-                (eval, move_performed) = new_game.minimax(depth - 1, True)
+                (eval, move_performed, depth_stat) = new_game.minimax(
+                    depth - 1, True, start_time
+                )
 
                 if min_eval >= eval:
                     min_eval = eval
                     optimal_move = move
 
-            return min_eval, optimal_move
-        
+                    if datetime.now() > start_time + timedelta(
+                        seconds=self.options.max_time
+                    ):
+                        break
 
-    def minimax_alpha_beta(self, depth: int, is_maxiPlayer: bool, alpha: int, beta :int) -> (int, CoordPair):
-        if depth == 0 or self.is_finished():
+            return min_eval, optimal_move, 0
+
+    def minimax_alpha_beta(
+        self, depth: int, is_maxiPlayer: bool, alpha: int, beta: int, start_time
+    ) -> (int, CoordPair, int):
+        if (
+            depth == 0
+            or self.is_finished()
+            or datetime.now() > start_time + timedelta(seconds=self.options.max_time)
+        ):
+            # OG e0() heuristic
+            # return e0_heuristic(self), None, depth
+            # modified e0() to test health
+            # return e0_heuristic_with_health(self), None, depth
+
             if is_maxiPlayer:
-                return e2_heuristic(self), None
-        
+                return e1_heuristic(self), None, depth
+
             if not is_maxiPlayer:
-                return e2_heuristic(self), None, depth
-            
-            
+                return e1_heuristic(self), None, depth
+
         possible_moves = self.move_candidates()
 
         if is_maxiPlayer:
@@ -727,7 +769,6 @@ class Game:
             optimal_move = None
 
             for move in possible_moves:
-
                 new_game = self.clone()
 
                 # perform the new virtual move - to compute possible move
@@ -735,7 +776,13 @@ class Game:
 
                 # change the turn of the virtual game for the next iteration - same is done for the defender (minimizing player)
                 new_game.next_player = Player.Defender
-                (state_heuristic, move_performed) = new_game.minimax_alpha_beta(depth - 1, False, alpha, beta)
+                (
+                    state_heuristic,
+                    move_performed,
+                    depth_stat,
+                ) = new_game.minimax_alpha_beta(
+                    depth - 1, False, alpha, beta, start_time
+                )
 
                 # Pruning
                 alpha = max(alpha, state_heuristic)
@@ -746,19 +793,29 @@ class Game:
                     max_eval = state_heuristic
                     optimal_move = move
 
-            return max_eval, optimal_move
-        
+                    if datetime.now() > start_time + timedelta(
+                        seconds=self.options.max_time
+                    ):
+                        break
+
+            return max_eval, optimal_move, 0
+
         else:
             min_eval = MAX_HEURISTIC_SCORE
             optimal_move = None
 
-            for move in possible_moves:                
-
+            for move in possible_moves:
                 new_game = self.clone()
                 new_game.perform_move(move, None)
 
                 new_game.next_player = Player.Attacker
-                (state_heuristic, move_performed) = new_game.minimax_alpha_beta(depth - 1, True, alpha, beta)
+                (
+                    state_heuristic,
+                    move_performed,
+                    depth_stat,
+                ) = new_game.minimax_alpha_beta(
+                    depth - 1, True, alpha, beta, start_time
+                )
 
                 # Pruning
                 beta = min(beta, state_heuristic)
@@ -769,8 +826,12 @@ class Game:
                     min_eval = state_heuristic
                     optimal_move = move
 
-            return min_eval, optimal_move
+                    if datetime.now() > start_time + timedelta(
+                        seconds=self.options.max_time
+                    ):
+                        break
 
+            return min_eval, optimal_move, 0
 
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
@@ -778,14 +839,14 @@ class Game:
 
         if(self.options.alpha_beta == True):
             if self.next_player == Player.Attacker:
-                (score, move, avg_depth) = self.minimax_alpha_beta(self.options.max_depth, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+                (score, move, avg_depth) = self.minimax_alpha_beta(self.options.max_depth, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE, start_time)
             else:
-                (score, move, avg_depth) = self.minimax_alpha_beta(self.options.max_depth, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE)
+                (score, move, avg_depth) = self.minimax_alpha_beta(self.options.max_depth, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE, start_time)
         else:
             if self.next_player == Player.Attacker:
-                (score, move, avg_depth) = self.minimax(self.options.max_depth, True)
+                (score, move, avg_depth) = self.minimax(self.options.max_depth, True, start_time)
             else:
-                (score, move, avg_depth) = self.minimax(self.options.max_depth, False)
+                (score, move, avg_depth) = self.minimax(self.options.max_depth, False, start_time)
             
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
@@ -856,6 +917,7 @@ class Game:
         except Exception as error:
             print(f"Broker error: {error}")
         return None
+
 
 ##############################################################################################################
 
@@ -968,8 +1030,8 @@ def main():
 
 ##############################################################################################################
 
-def count_pieces_by_player(game: Game):
 
+def count_pieces_by_player(game: Game):
     total_health_attacker = 0
     total_health_defender = 0
 
@@ -992,23 +1054,35 @@ def count_pieces_by_player(game: Game):
 
     for row in game.board:
         for piece in row:
-
             if piece:
                 piece_count[piece.player][piece.type] += 1
-                
+
                 if piece.player == Player.Attacker:
                     total_health_attacker += piece.health
                 else:
-                    total_health_defender += piece.health   
+                    total_health_defender += piece.health
 
     return piece_count, total_health_attacker, total_health_defender
+
 
 # Assuming P1 is the attacker - heuristic from the handout
 def e0_heuristic(game: Game) -> int:
     (dict_pieces, health_attack, health_defend) = count_pieces_by_player(game)
-    attacker_sum = 3 * dict_pieces[Player.Attacker][UnitType.Virus] + 3 * dict_pieces[Player.Attacker][UnitType.Tech] + 3 * dict_pieces[Player.Attacker][UnitType.Firewall] + 3 * dict_pieces[Player.Attacker][UnitType.Program] + 9999 * dict_pieces[Player.Attacker][UnitType.AI]
-    defender_sum = 3 * dict_pieces[Player.Defender][UnitType.Virus] + 3 * dict_pieces[Player.Defender][UnitType.Tech] + 3 * dict_pieces[Player.Defender][UnitType.Firewall] + 3 * dict_pieces[Player.Defender][UnitType.Program] + 9999 * dict_pieces[Player.Defender][UnitType.AI]
-    return (attacker_sum - defender_sum)
+    attacker_sum = (
+        3 * dict_pieces[Player.Attacker][UnitType.Virus]
+        + 3 * dict_pieces[Player.Attacker][UnitType.Tech]
+        + 3 * dict_pieces[Player.Attacker][UnitType.Firewall]
+        + 3 * dict_pieces[Player.Attacker][UnitType.Program]
+        + 9999 * dict_pieces[Player.Attacker][UnitType.AI]
+    )
+    defender_sum = (
+        3 * dict_pieces[Player.Defender][UnitType.Virus]
+        + 3 * dict_pieces[Player.Defender][UnitType.Tech]
+        + 3 * dict_pieces[Player.Defender][UnitType.Firewall]
+        + 3 * dict_pieces[Player.Defender][UnitType.Program]
+        + 9999 * dict_pieces[Player.Defender][UnitType.AI]
+    )
+    return attacker_sum - defender_sum
 
 
 # Sum of attack power
@@ -1018,15 +1092,55 @@ def e1_heuristic(game: Game) -> int:
 
     (dict_pieces, health_attack, health_defend) = count_pieces_by_player(game)
 
-    virus_att_pwr = dict_pieces[Player.Attacker][UnitType.Virus] * (9 * dict_pieces[Player.Defender][UnitType.AI] + 3 * dict_pieces[Player.Defender][UnitType.Tech] + 1 * dict_pieces[Player.Defender][UnitType.Firewall] + 6 * dict_pieces[Player.Defender][UnitType.Program])
-    firewall_att_pwr = dict_pieces[Player.Attacker][UnitType.Firewall] * (dict_pieces[Player.Defender][UnitType.AI] +  dict_pieces[Player.Defender][UnitType.Tech] + dict_pieces[Player.Defender][UnitType.Firewall] + dict_pieces[Player.Defender][UnitType.Program])
-    program_att_pwr = dict_pieces[Player.Attacker][UnitType.Program] * (3 * dict_pieces[Player.Defender][UnitType.AI] + 3 * dict_pieces[Player.Defender][UnitType.Tech] + 1 * dict_pieces[Player.Defender][UnitType.Firewall] + 3 * dict_pieces[Player.Defender][UnitType.Program])
-    ai_att_pwr = dict_pieces[Player.Attacker][UnitType.AI] * (3 * dict_pieces[Player.Defender][UnitType.AI] + 3 * dict_pieces[Player.Defender][UnitType.Tech] + 1 * dict_pieces[Player.Defender][UnitType.Firewall] + 3 * dict_pieces[Player.Defender][UnitType.Program])
+    virus_att_pwr = dict_pieces[Player.Attacker][UnitType.Virus] * (
+        9 * dict_pieces[Player.Defender][UnitType.AI]
+        + 3 * dict_pieces[Player.Defender][UnitType.Tech]
+        + 1 * dict_pieces[Player.Defender][UnitType.Firewall]
+        + 6 * dict_pieces[Player.Defender][UnitType.Program]
+    )
+    firewall_att_pwr = dict_pieces[Player.Attacker][UnitType.Firewall] * (
+        dict_pieces[Player.Defender][UnitType.AI]
+        + dict_pieces[Player.Defender][UnitType.Tech]
+        + dict_pieces[Player.Defender][UnitType.Firewall]
+        + dict_pieces[Player.Defender][UnitType.Program]
+    )
+    program_att_pwr = dict_pieces[Player.Attacker][UnitType.Program] * (
+        3 * dict_pieces[Player.Defender][UnitType.AI]
+        + 3 * dict_pieces[Player.Defender][UnitType.Tech]
+        + 1 * dict_pieces[Player.Defender][UnitType.Firewall]
+        + 3 * dict_pieces[Player.Defender][UnitType.Program]
+    )
+    ai_att_pwr = dict_pieces[Player.Attacker][UnitType.AI] * (
+        3 * dict_pieces[Player.Defender][UnitType.AI]
+        + 3 * dict_pieces[Player.Defender][UnitType.Tech]
+        + 1 * dict_pieces[Player.Defender][UnitType.Firewall]
+        + 3 * dict_pieces[Player.Defender][UnitType.Program]
+    )
 
-    tech_def_pwr = dict_pieces[Player.Defender][UnitType.Tech] * (1 * dict_pieces[Player.Attacker][UnitType.AI] + 6 * dict_pieces[Player.Attacker][UnitType.Virus] + 1 * dict_pieces[Player.Attacker][UnitType.Firewall] + 1 * dict_pieces[Player.Attacker][UnitType.Program])
-    firewall_def_pwr = dict_pieces[Player.Defender][UnitType.Firewall] * (dict_pieces[Player.Attacker][UnitType.AI] +  dict_pieces[Player.Attacker][UnitType.Virus] + dict_pieces[Player.Attacker][UnitType.Firewall] + dict_pieces[Player.Attacker][UnitType.Program])
-    program_def_pwr = dict_pieces[Player.Defender][UnitType.Program] * (3 * dict_pieces[Player.Attacker][UnitType.AI] + 3 * dict_pieces[Player.Attacker][UnitType.Virus] + 1 * dict_pieces[Player.Attacker][UnitType.Firewall] + 3 * dict_pieces[Player.Attacker][UnitType.Program])
-    ai_def_pwr = dict_pieces[Player.Defender][UnitType.AI] * (3 * dict_pieces[Player.Attacker][UnitType.AI] + 3 * dict_pieces[Player.Attacker][UnitType.Virus] + 1 * dict_pieces[Player.Attacker][UnitType.Firewall] + 3 * dict_pieces[Player.Attacker][UnitType.Program])
+    tech_def_pwr = dict_pieces[Player.Defender][UnitType.Tech] * (
+        1 * dict_pieces[Player.Attacker][UnitType.AI]
+        + 6 * dict_pieces[Player.Attacker][UnitType.Virus]
+        + 1 * dict_pieces[Player.Attacker][UnitType.Firewall]
+        + 1 * dict_pieces[Player.Attacker][UnitType.Program]
+    )
+    firewall_def_pwr = dict_pieces[Player.Defender][UnitType.Firewall] * (
+        dict_pieces[Player.Attacker][UnitType.AI]
+        + dict_pieces[Player.Attacker][UnitType.Virus]
+        + dict_pieces[Player.Attacker][UnitType.Firewall]
+        + dict_pieces[Player.Attacker][UnitType.Program]
+    )
+    program_def_pwr = dict_pieces[Player.Defender][UnitType.Program] * (
+        3 * dict_pieces[Player.Attacker][UnitType.AI]
+        + 3 * dict_pieces[Player.Attacker][UnitType.Virus]
+        + 1 * dict_pieces[Player.Attacker][UnitType.Firewall]
+        + 3 * dict_pieces[Player.Attacker][UnitType.Program]
+    )
+    ai_def_pwr = dict_pieces[Player.Defender][UnitType.AI] * (
+        3 * dict_pieces[Player.Attacker][UnitType.AI]
+        + 3 * dict_pieces[Player.Attacker][UnitType.Virus]
+        + 1 * dict_pieces[Player.Attacker][UnitType.Firewall]
+        + 3 * dict_pieces[Player.Attacker][UnitType.Program]
+    )
 
     attacker_stats = health_attack + virus_att_pwr + firewall_att_pwr + program_att_pwr + ai_att_pwr
     defender_stats = health_defend + tech_def_pwr + firewall_def_pwr + program_def_pwr + ai_def_pwr
@@ -1059,6 +1173,7 @@ def find_optimal_oponent(attacking_piece: Unit, piece_count):
  
     return UnitType(max_opp_index), max
 
+
 def BFS(game: Game, target: UnitType, src: Coord):
     visited = []
     queue = []
@@ -1077,16 +1192,16 @@ def BFS(game: Game, target: UnitType, src: Coord):
             if adjecent not in visited and game.is_valid_coord(adjecent):
                 visited.append(adjecent)
                 queue.append(adjecent)
-    
 
-def calc_distance(src : Coord, target : Coord):
+
+def calc_distance(src: Coord, target: Coord) -> int:
     src_x = src.row
     src_y = src.col
 
     targ_x = target.row
     targ_y = target.col
 
-    answ = (((src_x - targ_x)**2 + (src_y - targ_y)**2)**0.5)
+    answ = (((src_x - targ_x) ** 2 + (src_y - targ_y) ** 2) ** 0.5).__ceil__()
 
     return answ
 
