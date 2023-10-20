@@ -252,9 +252,9 @@ class Options:
     """Representation of the game options."""
 
     dim: int = 5
-    max_depth: int | None = 4
+    max_depth: int | None = 5000
     min_depth: int | None = 2
-    max_time: float | None = 5.0
+    max_time: float | None = 1
     game_type: GameType = GameType.AttackerVsDefender
     alpha_beta: bool = True
     max_turns: int | None = 100
@@ -680,15 +680,10 @@ class Game:
 
     def minimax(
         self, depth: int, is_maxiPlayer: bool, start_time
-    ) -> (int, CoordPair, int):
+    ) -> (int, CoordPair):
         if depth == 0 or datetime.now() > start_time + timedelta(
             seconds=self.options.max_time
         ):
-            # OG e0() heuristic
-            # return e0_heuristic(self), None, depth
-            # modified e0() to test health
-            # return e0_heuristic_with_health(self), None, depth
-
             if is_maxiPlayer:
                 return e1_heuristic(self), None, depth
 
@@ -705,7 +700,7 @@ class Game:
                 new_game = self.clone()
                 new_game.perform_move(move, None)
                 new_game.next_player = Player.Defender
-                (eval, move_performed, depth_stat) = new_game.minimax(
+                (eval, move_performed) = new_game.minimax(
                     depth - 1, False, start_time
                 )
 
@@ -718,7 +713,7 @@ class Game:
                     ):
                         break
 
-            return max_eval, optimal_move, 0
+            return max_eval, optimal_move
 
         else:
             min_eval = MAX_HEURISTIC_SCORE
@@ -728,7 +723,7 @@ class Game:
                 new_game = self.clone()
                 new_game.perform_move(move, None)
                 new_game.next_player = Player.Attacker
-                (eval, move_performed, depth_stat) = new_game.minimax(
+                (eval, move_performed) = new_game.minimax(
                     depth - 1, True, start_time
                 )
 
@@ -741,26 +736,21 @@ class Game:
                     ):
                         break
 
-            return min_eval, optimal_move, 0
+            return min_eval, optimal_move
 
     def minimax_alpha_beta(
         self, depth: int, is_maxiPlayer: bool, alpha: int, beta: int, start_time
-    ) -> (int, CoordPair, int):
+    ) -> (int, CoordPair):
         if (
             depth == 0
             or self.is_finished()
             or datetime.now() > start_time + timedelta(seconds=self.options.max_time)
         ):
-            # OG e0() heuristic
-            # return e0_heuristic(self), None, depth
-            # modified e0() to test health
-            # return e0_heuristic_with_health(self), None, depth
-
             if is_maxiPlayer:
-                return e1_heuristic(self), None, depth
+                return e1_heuristic(self), None
 
             if not is_maxiPlayer:
-                return e1_heuristic(self), None, depth
+                return e2_heuristic(self), None
 
         possible_moves = self.move_candidates()
 
@@ -779,7 +769,6 @@ class Game:
                 (
                     state_heuristic,
                     move_performed,
-                    depth_stat,
                 ) = new_game.minimax_alpha_beta(
                     depth - 1, False, alpha, beta, start_time
                 )
@@ -798,7 +787,7 @@ class Game:
                     ):
                         break
 
-            return max_eval, optimal_move, 0
+            return max_eval, optimal_move
 
         else:
             min_eval = MAX_HEURISTIC_SCORE
@@ -812,7 +801,6 @@ class Game:
                 (
                     state_heuristic,
                     move_performed,
-                    depth_stat,
                 ) = new_game.minimax_alpha_beta(
                     depth - 1, True, alpha, beta, start_time
                 )
@@ -831,7 +819,7 @@ class Game:
                     ):
                         break
 
-            return min_eval, optimal_move, 0
+            return min_eval, optimal_move
 
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
@@ -839,14 +827,14 @@ class Game:
 
         if(self.options.alpha_beta == True):
             if self.next_player == Player.Attacker:
-                (score, move, avg_depth) = self.minimax_alpha_beta(self.options.max_depth, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE, start_time)
+                (score, move) = self.minimax_alpha_beta(50, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE, start_time)
             else:
-                (score, move, avg_depth) = self.minimax_alpha_beta(self.options.max_depth, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE, start_time)
+                (score, move) = self.minimax_alpha_beta(50, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE, start_time)
         else:
             if self.next_player == Player.Attacker:
-                (score, move, avg_depth) = self.minimax(self.options.max_depth, True, start_time)
+                (score, move) = self.minimax(self.options.max_depth, True, start_time)
             else:
-                (score, move, avg_depth) = self.minimax(self.options.max_depth, False, start_time)
+                (score, move) = self.minimax(self.options.max_depth, False, start_time)
             
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
@@ -946,7 +934,7 @@ def main():
     elif args.game_type == "defender":
         game_type = GameType.CompVsDefender
     elif args.game_type == "manual":
-        game_type = GameType.AttackerVsDefender 
+        game_type = GameType.CompVsComp 
     else:
         game_type = GameType.CompVsComp
 
