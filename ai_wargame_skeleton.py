@@ -758,7 +758,7 @@ class Game:
             return min_eval, optimal_move
 
     def minimax_alpha_beta( self, depth: int, is_maxiPlayer: bool, alpha: int, beta: int, start_time, ) -> (int, CoordPair):
-        if (depth == 0 or self.is_finished() or datetime.now() > start_time + timedelta(seconds=self.options.max_time)):
+        if (depth == 0 or datetime.now() > start_time + timedelta(seconds=self.options.max_time)):
             if is_maxiPlayer:
                 return self.heuristic_type_attacker(), None
 
@@ -989,12 +989,10 @@ def main():
         f.write(f"Alpha-beta is {options.alpha_beta} \n")
     if game_type == GameType.CompVsDefender:
         f.write(f"Player 1 = AI \n")
-    else:
-        f.write(f"Player 1 is H \n")
-    if game_type == GameType.AttackerVsComp:
-        f.write(f"Player 2 = AI \n")
-    else:
         f.write(f"Player 2 is H \n")
+    if game_type == GameType.AttackerVsComp:
+        f.write(f"Player 1 is H \n")
+        f.write(f"Player 2 = AI \n")
     if game_type == GameType.CompVsComp:
         f.write(f"Player 1 = AI \n")
         f.write(f"Player 2 = AI \n")
