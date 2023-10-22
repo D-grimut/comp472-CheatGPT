@@ -1,0 +1,20 @@
+Timeout is 5 
+Max turns is 100 
+Alpha-beta is False 
+Player 1 = AI 
+Player 2 = AI 
+Player 1 Heuristic is e1 
+Player 2 Heuristic is e2 
+Next player: Attacker
+Turns played: 0
+
+    0   1   2   3   4  
+A: dA9 dT9 dF9  .   .  
+B: dT9 dP9  .   .   .  
+C: dF9  .   .   .  aP9 
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+ 
+------------------------------------------------------------------------------
+Turn #0 
+Player Attacker 

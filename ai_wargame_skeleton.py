@@ -704,7 +704,8 @@ class Game:
                 new_game.perform_move(move, None)
                 new_game.next_player = Player.Defender
                 (eval, move_performed) = new_game.minimax(depth - 1, False, start_time)
-                
+
+                #does the branching factor at depth i really equate to the evaluations we perform below?
                 self.stats.evaluations_per_depth[depth] = self.stats.evaluations_per_depth.get(depth, 0) + 1
 
                 if max_eval <= eval:
@@ -960,6 +961,7 @@ def main():
     game = Game(options=options)
 
     filename = f"gameTrace-{str(options.alpha_beta).lower()}-{int(options.max_time)}-{int(options.max_turns)}.txt"
+    total_evals = 0
 
     f = open(filename, "w")
     f.write(f"Timeout is {options.max_time} \n")
@@ -1021,8 +1023,7 @@ def main():
         f.write(f"Elapsed time: {elapsed_seconds:0.1f}s \n")
         # if ai heuristic score?
         f.write(f"Heuristic Score: {score} \n")
-
-        total_evals = sum(game.stats.evaluations_per_depth.values())
+        total_evals += sum(game.stats.evaluations_per_depth.values())
         f.write(f"Cummulative eval = {total_evals} \n")
         f.write("Evals per depth: ")
         for k in sorted(game.stats.evaluations_per_depth.keys()):
@@ -1033,9 +1034,15 @@ def main():
         for k in sorted(game.stats.evaluations_per_depth.keys()):
             if k > 7:
                 break
-            percentage = game.stats.evaluations_per_depth[k]/total_evals * 100
+            percentage = game.stats.evaluations_per_depth[k]/(sum(game.stats.evaluations_per_depth.values())) * 100
             f.write(f"{k}: {round(percentage)}%, ")
 
+        total_nodes = sum(game.stats.evaluations_per_depth.values())
+        max_depth = len(game.stats.evaluations_per_depth)
+        
+        f.write(f"Average Branching: {round(total_nodes / max_depth)}\n")
+
+        game.stats.evaluations_per_depth = {}
         f.write("New configuration of the board:\n")
         f.write(f"{game}\n")
 
