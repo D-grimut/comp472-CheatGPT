@@ -256,7 +256,7 @@ class Options:
     min_depth: int | None = 2
     max_time: float | None = 5
     game_type: GameType = GameType.AttackerVsDefender
-    alpha_beta: bool | None = True
+    alpha_beta: bool | None = False
     max_turns: int | None = 100
     randomize_moves: bool = True
     broker: str | None = None
