@@ -256,7 +256,7 @@ class Options:
     min_depth: int | None = 2
     max_time: float | None = 5
     game_type: GameType = GameType.AttackerVsDefender
-    alpha_beta: bool = True
+    alpha_beta: bool = False
     max_turns: int | None = 100
     randomize_moves: bool = True
     broker: str | None = None
@@ -686,14 +686,12 @@ class Game:
             yield move.clone()
 
     def minimax(self, depth: int, is_maxiPlayer: bool, start_time) -> (int, CoordPair):
-        if depth == 0 or datetime.now() > start_time + timedelta(
-            seconds=self.options.max_time
-        ):
+        if (depth == 0 or datetime.now() > start_time + timedelta(seconds=self.options.max_time) or self.is_finished()):
             if is_maxiPlayer:
-                return e1_heuristic(self), None, depth
+                return e2_heuristic(self), None
 
             if not is_maxiPlayer:
-                return e0_heuristic(self), None, depth
+                return e2_heuristic(self), None
 
         possible_moves = self.move_candidates()
 
@@ -705,16 +703,15 @@ class Game:
                 new_game = self.clone()
                 new_game.perform_move(move, None)
                 new_game.next_player = Player.Defender
-                (eval, move_performed) = new_game.minimax(
-                    depth - 1, False, start_time)
+                (eval, move_performed) = new_game.minimax(depth - 1, False, start_time)
+                
+                self.stats.evaluations_per_depth[depth] = self.stats.evaluations_per_depth.get(depth, 0) + 1
 
                 if max_eval <= eval:
                     max_eval = eval
                     optimal_move = move
 
-                    if datetime.now() > start_time + timedelta(
-                        seconds=self.options.max_time
-                    ):
+                    if datetime.now() > start_time + timedelta(seconds=self.options.max_time):
                         break
 
             return max_eval, optimal_move
@@ -727,33 +724,21 @@ class Game:
                 new_game = self.clone()
                 new_game.perform_move(move, None)
                 new_game.next_player = Player.Attacker
-                (eval, move_performed) = new_game.minimax(
-                    depth - 1, True, start_time)
+                (eval, move_performed) = new_game.minimax(depth - 1, True, start_time)
+                
+                self.stats.evaluations_per_depth[depth] = self.stats.evaluations_per_depth.get(depth, 0) + 1
 
                 if min_eval >= eval:
                     min_eval = eval
                     optimal_move = move
 
-                    if datetime.now() > start_time + timedelta(
-                        seconds=self.options.max_time
-                    ):
+                    if datetime.now() > start_time + timedelta(seconds=self.options.max_time):
                         break
 
             return min_eval, optimal_move
 
-    def minimax_alpha_beta(
-        self,
-        depth: int,
-        is_maxiPlayer: bool,
-        alpha: int,
-        beta: int,
-        start_time,
-    ) -> (int, CoordPair):
-        if (
-            depth == 0
-            or self.is_finished()
-            or datetime.now() > start_time + timedelta(seconds=self.options.max_time)
-        ):
+    def minimax_alpha_beta( self, depth: int, is_maxiPlayer: bool, alpha: int, beta: int, start_time, ) -> (int, CoordPair):
+        if (depth == 0 or self.is_finished() or datetime.now() > start_time + timedelta(seconds=self.options.max_time)):
             if is_maxiPlayer:
                 return e2_heuristic(self), None
 
@@ -849,11 +834,9 @@ class Game:
                 )
         else:
             if self.next_player == Player.Attacker:
-                (score, move) = self.minimax(
-                    self.options.max_depth, True, start_time)
+                (score, move) = self.minimax(self.options.max_depth, True, start_time)
             else:
-                (score, move) = self.minimax(
-                    self.options.max_depth, False, start_time)
+                (score, move) = self.minimax(self.options.max_depth, False, start_time)
 
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
@@ -1041,17 +1024,17 @@ def main():
 
         total_evals = sum(game.stats.evaluations_per_depth.values())
         f.write(f"Cummulative eval = {total_evals} \n")
-        f.write("Evals per depth: \n")
+        f.write("Evals per depth: ")
         for k in sorted(game.stats.evaluations_per_depth.keys()):
             if k > 7:
                 break
-            f.write(f"{k}:{game.stats.evaluations_per_depth[k]} \n")
-        f.write("Cumulative % evals by depth: \n")
+            f.write(f"{k}:{game.stats.evaluations_per_depth[k]}, ")
+        f.write("\nCumulative % evals by depth: ")
         for k in sorted(game.stats.evaluations_per_depth.keys()):
             if k > 7:
                 break
             percentage = game.stats.evaluations_per_depth[k]/total_evals * 100
-            f.write(f"{k}: {round(percentage)}% \n")
+            f.write(f"{k}: {round(percentage)}%, ")
 
         f.write("New configuration of the board:\n")
         f.write(f"{game}\n")
