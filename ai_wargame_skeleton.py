@@ -254,7 +254,7 @@ class Options:
     dim: int = 5
     max_depth: int | None = 25
     min_depth: int | None = 2
-    max_time: float | None = 5
+    max_time: float | None = 0.1
     game_type: GameType = GameType.AttackerVsDefender
     alpha_beta: bool | None = False
     max_turns: int | None = 100
@@ -834,7 +834,7 @@ class Game:
             return min_eval, optimal_move
 
     def suggest_move(self) -> CoordPair | None:
-        """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
+
         start_time = datetime.now()
 
         if self.options.alpha_beta == True:
