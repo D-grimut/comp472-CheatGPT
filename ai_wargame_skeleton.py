@@ -88,7 +88,7 @@ class Unit:
     def mod_health(self, health_delta: int):
         """Modify this unit's health by delta amount."""
         self.health += health_delta
-        if self.health < 0:
+        if self.health <= 0:
             self.health = 0
         elif self.health > 9:
             self.health = 9
@@ -252,14 +252,16 @@ class Options:
     """Representation of the game options."""
 
     dim: int = 5
-    max_depth: int | None = 15
+    max_depth: int | None = 25
     min_depth: int | None = 2
     max_time: float | None = 5
     game_type: GameType = GameType.AttackerVsDefender
-    alpha_beta: bool = False
+    alpha_beta: bool | None = True
     max_turns: int | None = 100
     randomize_moves: bool = True
     broker: str | None = None
+    attacker_heuristic : str | None = "e0"
+    defender_heuristic : str | None = "e0"
 
 
 ##############################################################################################################
@@ -685,13 +687,31 @@ class Game:
 
             yield move.clone()
 
+    def heuristic_type_attacker(self) -> int:
+        e_type = self.options.attacker_heuristic
+        if e_type == "e0":
+            return e0_heuristic(self)
+        if e_type == "e1":
+            return e1_heuristic(self)
+        if e_type == "e2":
+            return e2_heuristic(self)
+        
+    def heuristic_type_defender(self) -> int:
+        e_type = self.options.defender_heuristic
+        if e_type == "e0":
+            return e0_heuristic(self)
+        if e_type == "e1":
+            return e1_heuristic(self)
+        if e_type == "e2":
+            return e2_heuristic(self)
+
     def minimax(self, depth: int, is_maxiPlayer: bool, start_time) -> (int, CoordPair):
-        if (depth == 0 or datetime.now() > start_time + timedelta(seconds=self.options.max_time) or self.is_finished()):
+        if (depth == 0 or datetime.now() > start_time + timedelta(seconds=self.options.max_time)):
             if is_maxiPlayer:
-                return e2_heuristic(self), None
+                return self.heuristic_type_attacker(), None
 
             if not is_maxiPlayer:
-                return e2_heuristic(self), None
+                return self.heuristic_type_defender(), None
 
         possible_moves = self.move_candidates()
 
@@ -705,7 +725,6 @@ class Game:
                 new_game.next_player = Player.Defender
                 (eval, move_performed) = new_game.minimax(depth - 1, False, start_time)
 
-                #does the branching factor at depth i really equate to the evaluations we perform below?
                 self.stats.evaluations_per_depth[depth] = self.stats.evaluations_per_depth.get(depth, 0) + 1
 
                 if max_eval <= eval:
@@ -741,13 +760,12 @@ class Game:
     def minimax_alpha_beta( self, depth: int, is_maxiPlayer: bool, alpha: int, beta: int, start_time, ) -> (int, CoordPair):
         if (depth == 0 or self.is_finished() or datetime.now() > start_time + timedelta(seconds=self.options.max_time)):
             if is_maxiPlayer:
-                return e2_heuristic(self), None
+                return self.heuristic_type_attacker(), None
 
             if not is_maxiPlayer:
-                return e2_heuristic(self), None
+                return self.heuristic_type_defender(), None
 
         possible_moves = self.move_candidates()
-        eval_count = 0
 
         if is_maxiPlayer:
             max_eval = MIN_HEURISTIC_SCORE
@@ -761,12 +779,7 @@ class Game:
 
                 # change the turn of the virtual game for the next iteration - same is done for the defender (minimizing player)
                 new_game.next_player = Player.Defender
-                (
-                    state_heuristic,
-                    move_performed,
-                ) = new_game.minimax_alpha_beta(
-                    depth - 1, False, alpha, beta, start_time
-                )
+                (state_heuristic, move_performed) = new_game.minimax_alpha_beta(depth - 1, False, alpha, beta, start_time)
 
                 self.stats.evaluations_per_depth[depth] = self.stats.evaluations_per_depth.get(depth, 0) + 1
 
@@ -930,6 +943,8 @@ def main():
     parser.add_argument("--broker", type=str, help="play via a game broker")
     parser.add_argument("--max_turns", type=int, help="maximum turns")
     parser.add_argument("--alpha_beta", type=bool, help="toggle alpha-beta")
+    parser.add_argument("--attacker_heuristic", type=str, help="select attacker heuristic (i.e: e0, e1, e2)")
+    parser.add_argument("--defender_heuristic", type=str, help="select defender heuristic (i.e: e0, e1, e2)")
     args = parser.parse_args()
 
     # parse the game type
@@ -956,6 +971,10 @@ def main():
         options.max_turns = args.max_turns
     if args.alpha_beta is not None:
         options.alpha_beta = args.alpha_beta
+    if args.attacker_heuristic is not None:
+        options.attacker_heuristic = args.attacker_heuristic
+    if args.defender_heuristic is not None:
+        options.defender_heuristic = args.defender_heuristic
 
     # create a new game
     game = Game(options=options)
@@ -968,14 +987,17 @@ def main():
     f.write(f"Max turns is {options.max_turns} \n")
     if game._attacker_has_ai or game._defender_has_ai:
         f.write(f"Alpha-beta is {options.alpha_beta} \n")
-    if game._attacker_has_ai:
+    if game_type == GameType.CompVsDefender:
         f.write(f"Player 1 = AI \n")
     else:
         f.write(f"Player 1 is H \n")
-    if game._defender_has_ai:
+    if game_type == GameType.AttackerVsComp:
         f.write(f"Player 2 = AI \n")
     else:
         f.write(f"Player 2 is H \n")
+    if game_type == GameType.CompVsComp:
+        f.write(f"Player 1 = AI \n")
+        f.write(f"Player 2 = AI \n")
     # name heuristic???
     f.write(f"Player 1 Heuristic is e1 \n")
     f.write(f"Player 2 Heuristic is e2 \n")
