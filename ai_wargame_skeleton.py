@@ -252,9 +252,9 @@ class Options:
     """Representation of the game options."""
 
     dim: int = 5
-    max_depth: int | None = 5000
+    max_depth: int | None = 15
     min_depth: int | None = 2
-    max_time: float | None = 1
+    max_time: float | None = 5
     game_type: GameType = GameType.AttackerVsDefender
     alpha_beta: bool = True
     max_turns: int | None = 100
@@ -296,16 +296,24 @@ class Game:
         self.set(Coord(0, 0), Unit(player=Player.Defender, type=UnitType.AI))
         self.set(Coord(1, 0), Unit(player=Player.Defender, type=UnitType.Tech))
         self.set(Coord(0, 1), Unit(player=Player.Defender, type=UnitType.Tech))
-        self.set(Coord(2, 0), Unit(player=Player.Defender, type=UnitType.Firewall))
-        self.set(Coord(0, 2), Unit(player=Player.Defender, type=UnitType.Firewall))
-        self.set(Coord(1, 1), Unit(player=Player.Defender, type=UnitType.Program))
+        self.set(Coord(2, 0), Unit(
+            player=Player.Defender, type=UnitType.Firewall))
+        self.set(Coord(0, 2), Unit(
+            player=Player.Defender, type=UnitType.Firewall))
+        self.set(Coord(1, 1), Unit(
+            player=Player.Defender, type=UnitType.Program))
         self.set(Coord(md, md), Unit(player=Player.Attacker, type=UnitType.AI))
-        self.set(Coord(md - 1, md), Unit(player=Player.Attacker, type=UnitType.Virus))
-        self.set(Coord(md, md - 1), Unit(player=Player.Attacker, type=UnitType.Virus))
-        self.set(Coord(md - 2, md), Unit(player=Player.Attacker, type=UnitType.Program))
-        self.set(Coord(md, md - 2), Unit(player=Player.Attacker, type=UnitType.Program))
+        self.set(Coord(md - 1, md),
+                 Unit(player=Player.Attacker, type=UnitType.Virus))
+        self.set(Coord(md, md - 1),
+                 Unit(player=Player.Attacker, type=UnitType.Virus))
+        self.set(Coord(md - 2, md),
+                 Unit(player=Player.Attacker, type=UnitType.Program))
+        self.set(Coord(md, md - 2),
+                 Unit(player=Player.Attacker, type=UnitType.Program))
         self.set(
-            Coord(md - 1, md - 1), Unit(player=Player.Attacker, type=UnitType.Firewall)
+            Coord(md - 1, md - 1), Unit(player=Player.Attacker,
+                                        type=UnitType.Firewall)
         )
 
     def clone(self) -> Game:
@@ -531,7 +539,6 @@ class Game:
                         f"Move from {coords.src} to {coords.dst} - self destruct\n"
                     )
                 return (True, "")
-            
 
     def next_turn(self):
         """Transitions game to the next turn."""
@@ -616,16 +623,16 @@ class Game:
                 else:
                     print("The move is not valid! Try again.")
 
-    def computer_turn(self, file) -> CoordPair | None:
+    def computer_turn(self, file):
         """Computer plays a move."""
-        mv = self.suggest_move()
+        mv, score = self.suggest_move()
         if mv is not None:
             (success, result) = self.perform_move(mv, file)
             if success:
                 print(f"Computer {self.next_player.name}: ", end="")
                 print(result)
                 self.next_turn()
-        return mv
+        return mv, score
 
     def player_units(self, player: Player) -> Iterable[Tuple[Coord, Unit]]:
         """Iterates over all units belonging to a player."""
@@ -678,9 +685,7 @@ class Game:
 
             yield move.clone()
 
-    def minimax(
-        self, depth: int, is_maxiPlayer: bool, start_time
-    ) -> (int, CoordPair):
+    def minimax(self, depth: int, is_maxiPlayer: bool, start_time) -> (int, CoordPair):
         if depth == 0 or datetime.now() > start_time + timedelta(
             seconds=self.options.max_time
         ):
@@ -701,8 +706,7 @@ class Game:
                 new_game.perform_move(move, None)
                 new_game.next_player = Player.Defender
                 (eval, move_performed) = new_game.minimax(
-                    depth - 1, False, start_time
-                )
+                    depth - 1, False, start_time)
 
                 if max_eval <= eval:
                     max_eval = eval
@@ -724,8 +728,7 @@ class Game:
                 new_game.perform_move(move, None)
                 new_game.next_player = Player.Attacker
                 (eval, move_performed) = new_game.minimax(
-                    depth - 1, True, start_time
-                )
+                    depth - 1, True, start_time)
 
                 if min_eval >= eval:
                     min_eval = eval
@@ -739,7 +742,12 @@ class Game:
             return min_eval, optimal_move
 
     def minimax_alpha_beta(
-        self, depth: int, is_maxiPlayer: bool, alpha: int, beta: int, start_time
+        self,
+        depth: int,
+        is_maxiPlayer: bool,
+        alpha: int,
+        beta: int,
+        start_time,
     ) -> (int, CoordPair):
         if (
             depth == 0
@@ -747,12 +755,13 @@ class Game:
             or datetime.now() > start_time + timedelta(seconds=self.options.max_time)
         ):
             if is_maxiPlayer:
-                return e1_heuristic(self), None
+                return e2_heuristic(self), None
 
             if not is_maxiPlayer:
                 return e2_heuristic(self), None
 
         possible_moves = self.move_candidates()
+        eval_count = 0
 
         if is_maxiPlayer:
             max_eval = MIN_HEURISTIC_SCORE
@@ -772,6 +781,8 @@ class Game:
                 ) = new_game.minimax_alpha_beta(
                     depth - 1, False, alpha, beta, start_time
                 )
+
+                self.stats.evaluations_per_depth[depth] = self.stats.evaluations_per_depth.get(depth, 0) + 1
 
                 # Pruning
                 alpha = max(alpha, state_heuristic)
@@ -805,6 +816,8 @@ class Game:
                     depth - 1, True, alpha, beta, start_time
                 )
 
+                self.stats.evaluations_per_depth[depth] = self.stats.evaluations_per_depth.get(depth, 0) + 1
+
                 # Pruning
                 beta = min(beta, state_heuristic)
                 if beta <= alpha:
@@ -825,17 +838,23 @@ class Game:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
         start_time = datetime.now()
 
-        if(self.options.alpha_beta == True):
+        if self.options.alpha_beta == True:
             if self.next_player == Player.Attacker:
-                (score, move) = self.minimax_alpha_beta(50, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE, start_time)
+                (score, move) = self.minimax_alpha_beta(
+                    self.options.max_depth, True, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE, start_time
+                )
             else:
-                (score, move) = self.minimax_alpha_beta(50, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE, start_time)
+                (score, move) = self.minimax_alpha_beta(
+                    self.options.max_depth, False, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE, start_time
+                )
         else:
             if self.next_player == Player.Attacker:
-                (score, move) = self.minimax(self.options.max_depth, True, start_time)
+                (score, move) = self.minimax(
+                    self.options.max_depth, True, start_time)
             else:
-                (score, move) = self.minimax(self.options.max_depth, False, start_time)
-            
+                (score, move) = self.minimax(
+                    self.options.max_depth, False, start_time)
+
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
         print(f"Heuristic score: {score}")
@@ -845,9 +864,10 @@ class Game:
         print()
         total_evals = sum(self.stats.evaluations_per_depth.values())
         if self.stats.total_seconds > 0:
-            print(f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
+            print(
+                f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
         print(f"Elapsed time: {elapsed_seconds:0.1f}s")
-        return move
+        return move, score
 
     def post_move_to_broker(self, move: CoordPair):
         """Send a move to the game broker."""
@@ -934,7 +954,7 @@ def main():
     elif args.game_type == "defender":
         game_type = GameType.CompVsDefender
     elif args.game_type == "manual":
-        game_type = GameType.CompVsComp 
+        game_type = GameType.CompVsComp
     else:
         game_type = GameType.CompVsComp
 
@@ -972,6 +992,8 @@ def main():
     else:
         f.write(f"Player 2 is H \n")
     # name heuristic???
+    f.write(f"Player 1 Heuristic is e1 \n")
+    f.write(f"Player 2 Heuristic is e2 \n")
     f.write(f"{game} \n")
     f.write(
         "------------------------------------------------------------------------------"
@@ -984,6 +1006,7 @@ def main():
         winner = game.has_winner()
         f.write(f"\nTurn #{game.turns_played} \n")
         f.write(f"Player {game.next_player.name} \n")
+        start_time = datetime.now()
         if winner is not None:
             print(f"{winner.name} wins!")
             # writes number of turns played for winner
@@ -1003,7 +1026,7 @@ def main():
             game.human_turn(f)
         else:
             player = game.next_player
-            move = game.computer_turn(f)
+            move, score = game.computer_turn(f)
             if move is not None:
                 game.post_move_to_broker(move)
             else:
@@ -1011,7 +1034,25 @@ def main():
                 exit(1)
 
         # if ai action time?
+        elapsed_seconds = (datetime.now() - start_time).total_seconds()
+        f.write(f"Elapsed time: {elapsed_seconds:0.1f}s \n")
         # if ai heuristic score?
+        f.write(f"Heuristic Score: {score} \n")
+
+        total_evals = sum(game.stats.evaluations_per_depth.values())
+        f.write(f"Cummulative eval = {total_evals} \n")
+        f.write("Evals per depth: \n")
+        for k in sorted(game.stats.evaluations_per_depth.keys()):
+            if k > 7:
+                break
+            f.write(f"{k}:{game.stats.evaluations_per_depth[k]} \n")
+        f.write("Cumulative % evals by depth: \n")
+        for k in sorted(game.stats.evaluations_per_depth.keys()):
+            if k > 7:
+                break
+            percentage = game.stats.evaluations_per_depth[k]/total_evals * 100
+            f.write(f"{k}: {round(percentage)}% \n")
+
         f.write("New configuration of the board:\n")
         f.write(f"{game}\n")
 
@@ -1077,7 +1118,6 @@ def e0_heuristic(game: Game) -> int:
 # Compute the total sum of attack power of atack pieces, and defender,
 # substarct both while also taking inconcideration the total health of the defender and attacker
 def e1_heuristic(game: Game) -> int:
-
     (dict_pieces, health_attack, health_defend) = count_pieces_by_player(game)
 
     virus_att_pwr = dict_pieces[Player.Attacker][UnitType.Virus] * (
@@ -1130,18 +1170,26 @@ def e1_heuristic(game: Game) -> int:
         + 3 * dict_pieces[Player.Attacker][UnitType.Program]
     )
 
-    attacker_stats = health_attack + virus_att_pwr + firewall_att_pwr + program_att_pwr + ai_att_pwr
-    defender_stats = health_defend + tech_def_pwr + firewall_def_pwr + program_def_pwr + ai_def_pwr
+    attacker_stats = (
+        health_attack + virus_att_pwr + firewall_att_pwr + program_att_pwr + ai_att_pwr
+    )
+    defender_stats = (
+        health_defend + tech_def_pwr + firewall_def_pwr + program_def_pwr + ai_def_pwr
+    )
 
-    return (attacker_stats - defender_stats)
-   
+    return attacker_stats - defender_stats
+
 
 def find_optimal_oponent(attacking_piece: Unit, piece_count):
     opponents_damages = attacking_piece.damage_table[attacking_piece.type.value]
     max = 0
     max_opp_index = 0
 
-    enemy_type = Player.Defender if attacking_piece.player == Player.Attacker else Player.Attacker
+    enemy_type = (
+        Player.Defender
+        if attacking_piece.player == Player.Attacker
+        else Player.Attacker
+    )
 
     if enemy_type != Player.Defender:
         for opp, value in enumerate(opponents_damages):
@@ -1152,13 +1200,13 @@ def find_optimal_oponent(attacking_piece: Unit, piece_count):
                 max_opp_index = opp
 
     else:
-        for i in [0,1,2,3,4]:
+        for i in [0, 1, 2, 3, 4]:
             if piece_count[enemy_type][UnitType(i)] == 0:
                 continue
             if attacking_piece.damage_table[i][attacking_piece.type.value] > max:
                 max = attacking_piece.damage_table[i][attacking_piece.type.value]
                 max_opp_index = i
- 
+
     return UnitType(max_opp_index), max
 
 
@@ -1198,13 +1246,12 @@ def calc_distance(src: Coord, target: Coord) -> int:
 # If attacker - minimise distance with high value peices
 # If deffender - maximise distance with high value peices
 def e2_heuristic(game: Game) -> int:
-
     piece_values_attacker = {
         UnitType.Virus: 8,
         UnitType.Tech: 8,
         UnitType.Firewall: 3,
         UnitType.Program: 5,
-        UnitType.AI: 10,        
+        UnitType.AI: 10,
     }
 
     piece_values_deffender = {
@@ -1212,14 +1259,14 @@ def e2_heuristic(game: Game) -> int:
         UnitType.Tech: 10,
         UnitType.Firewall: 5,
         UnitType.Program: 3,
-        UnitType.AI: 1,        
+        UnitType.AI: 1,
     }
 
     (piece_count, health_attack, health_defender) = count_pieces_by_player(game)
 
     if piece_count[Player.Attacker][UnitType.AI] == 0:
         return -9999
-    
+
     if piece_count[Player.Defender][UnitType.AI] == 0:
         return 9999
 
@@ -1229,24 +1276,31 @@ def e2_heuristic(game: Game) -> int:
 
     for row_num, row in enumerate(game.board):
         for col_num, piece in enumerate(row):
-            if piece and piece.player == game.next_player:           
+            if piece and piece.player == game.next_player:
+                src_coord = Coord(row_num, col_num)
 
-                    src_coord = Coord (row_num, col_num)
+                max_dammage_opp, dammage = find_optimal_oponent(
+                    piece, piece_count)
+                target_coord = BFS(game, max_dammage_opp, src_coord)
 
-                    max_dammage_opp, dammage = find_optimal_oponent(piece, piece_count)
-                    target_coord = BFS(game, max_dammage_opp, src_coord)
+                distance = calc_distance(src_coord, target_coord)
 
-                    distance = calc_distance(src_coord, target_coord)
+                if game.next_player == Player.Attacker:
+                    piece_heuristic = (
+                        dammage *
+                        (piece_values_attacker[max_dammage_opp] - distance)
+                    ).__ceil__()
 
-                    if game.next_player == Player.Attacker:
-                        piece_heuristic = (dammage * (piece_values_attacker[max_dammage_opp] - distance)).__ceil__()
+                if game.next_player == Player.Defender:
+                    piece_heuristic = (
+                        distance *
+                        (dammage - piece_values_deffender[max_dammage_opp])
+                    ).__ceil__()
 
-                    if game.next_player == Player.Defender:
-                        piece_heuristic = (distance * (dammage - piece_values_deffender[max_dammage_opp])).__ceil__()
+                score += piece_heuristic
 
-                    score += piece_heuristic
+    return score + health_bonus
 
-    return (score + health_bonus)   
 
 if __name__ == "__main__":
     main()
