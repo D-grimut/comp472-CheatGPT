@@ -1,0 +1,323 @@
+Timeout is 1 
+Max turns is 100 
+Alpha-beta is False 
+Player 1 = AI 
+Player 2 = AI 
+Player 1 Heuristic is e1 
+Player 2 Heuristic is e2 
+Next player: Attacker
+Turns played: 0
+
+    0   1   2   3   4  
+A: dA9 dT9 dF9  .   .  
+B: dT9 dP9  .   .   .  
+C: dF9  .   .   .  aP9 
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+ 
+------------------------------------------------------------------------------
+Turn #0 
+Player Attacker 
+Move from C4 to B4
+Elapsed time: 1.0s 
+Heuristic Score: 9999 
+Cummulative eval = 20362 
+Evals per depth: 1:18156, 2:1916, 3:234, 4:26, 5:10, 6:1, 7:1, 
+Cumulative % evals by depth: 1: 89%, 2: 9%, 3: 1%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 814
+New configuration of the board:
+Next player: Defender
+Turns played: 1
+
+    0   1   2   3   4  
+A: dA9 dT9 dF9  .   .  
+B: dT9 dP9  .   .  aP9 
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #1 
+Player Defender 
+Move from A1 to A1 - self destruct
+Elapsed time: 1.0s 
+Heuristic Score: 3 
+Cummulative eval = 40087 
+Evals per depth: 1:17052, 2:2380, 3:238, 4:31, 5:4, 6:1, 7:1, 
+Cumulative % evals by depth: 1: 86%, 2: 12%, 3: 1%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 789
+New configuration of the board:
+Next player: Attacker
+Turns played: 2
+
+    0   1   2   3   4  
+A: dA7  .  dF7  .   .  
+B: dT7 dP7  .   .  aP9 
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #2 
+Player Attacker 
+Move from B4 to A4
+Elapsed time: 1.0s 
+Heuristic Score: 10002 
+Cummulative eval = 60004 
+Evals per depth: 1:17680, 2:1945, 3:236, 4:26, 5:10, 6:1, 7:1, 
+Cumulative % evals by depth: 1: 89%, 2: 10%, 3: 1%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 797
+New configuration of the board:
+Next player: Defender
+Turns played: 3
+
+    0   1   2   3   4  
+A: dA7  .  dF7  .  aP9 
+B: dT7 dP7  .   .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #3 
+Player Defender 
+Move from A0 to B0 - repair unit dT8
+Elapsed time: 1.0s 
+Heuristic Score: 10002 
+Cummulative eval = 79296 
+Evals per depth: 1:16627, 2:2335, 3:266, 4:40, 5:4, 6:1, 7:1, 
+Cumulative % evals by depth: 1: 86%, 2: 12%, 3: 1%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 772
+New configuration of the board:
+Next player: Attacker
+Turns played: 4
+
+    0   1   2   3   4  
+A: dA7  .  dF7  .  aP9 
+B: dT8 dP7  .   .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #4 
+Player Attacker 
+Move from A4 to A3
+Elapsed time: 1.0s 
+Heuristic Score: 10002 
+Cummulative eval = 98830 
+Evals per depth: 1:17305, 2:1908, 3:263, 4:28, 5:10, 6:1, 7:1, 
+Cumulative % evals by depth: 1: 89%, 2: 10%, 3: 1%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 781
+New configuration of the board:
+Next player: Defender
+Turns played: 5
+
+    0   1   2   3   4  
+A: dA7  .  dF7 aP9  .  
+B: dT8 dP7  .   .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #5 
+Player Defender 
+Move from A0 to B0 - repair unit dT9
+Elapsed time: 1.0s 
+Heuristic Score: 10002 
+Cummulative eval = 117978 
+Evals per depth: 1:16258, 2:2502, 3:311, 4:50, 5:7, 6:1, 7:1, 
+Cumulative % evals by depth: 1: 85%, 2: 13%, 3: 2%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 766
+New configuration of the board:
+Next player: Attacker
+Turns played: 6
+
+    0   1   2   3   4  
+A: dA7  .  dF7 aP9  .  
+B: dT9 dP7  .   .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #6 
+Player Attacker 
+Move from A3 to A2 - aP8 attacks dF6
+Elapsed time: 1.0s 
+Heuristic Score: 10002 
+Cummulative eval = 137573 
+Evals per depth: 1:16985, 2:2208, 3:332, 4:40, 5:10, 6:1, 7:1, 
+Cumulative % evals by depth: 1: 87%, 2: 11%, 3: 2%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 784
+New configuration of the board:
+Next player: Defender
+Turns played: 7
+
+    0   1   2   3   4  
+A: dA7  .  dF6 aP8  .  
+B: dT9 dP7  .   .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #7 
+Player Defender 
+Move from A0 to A1
+Elapsed time: 1.0s 
+Heuristic Score: 10002 
+Cummulative eval = 156642 
+Evals per depth: 1:16224, 2:2482, 3:294, 4:43, 5:4, 6:3, 7:1, 
+Cumulative % evals by depth: 1: 85%, 2: 13%, 3: 2%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 763
+New configuration of the board:
+Next player: Attacker
+Turns played: 8
+
+    0   1   2   3   4  
+A:  .  dA7 dF6 aP8  .  
+B: dT9 dP7  .   .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #8 
+Player Attacker 
+Move from A3 to A2 - aP7 attacks dF5
+Elapsed time: 1.0s 
+Heuristic Score: 10002 
+Cummulative eval = 176051 
+Evals per depth: 1:16961, 2:2057, 3:317, 4:40, 5:12, 6:1, 7:3, 
+Cumulative % evals by depth: 1: 87%, 2: 11%, 3: 2%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 776
+New configuration of the board:
+Next player: Defender
+Turns played: 9
+
+    0   1   2   3   4  
+A:  .  dA7 dF5 aP7  .  
+B: dT9 dP7  .   .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #9 
+Player Defender 
+Move from A2 to A3 - dF4 attacks aP6
+Elapsed time: 1.0s 
+Heuristic Score: 10002 
+Cummulative eval = 195001 
+Evals per depth: 1:16103, 2:2480, 3:289, 4:47, 5:7, 6:3, 7:1, 
+Cumulative % evals by depth: 1: 85%, 2: 13%, 3: 2%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 758
+New configuration of the board:
+Next player: Attacker
+Turns played: 10
+
+    0   1   2   3   4  
+A:  .  dA7 dF4 aP6  .  
+B: dT9 dP7  .   .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #10 
+Player Attacker 
+Move from A3 to A2 - aP5 attacks dF3
+Elapsed time: 1.0s 
+Heuristic Score: 10002 
+Cummulative eval = 214325 
+Evals per depth: 1:16839, 2:2099, 3:317, 4:38, 5:7, 6:1, 7:3, 
+Cumulative % evals by depth: 1: 87%, 2: 11%, 3: 2%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 773
+New configuration of the board:
+Next player: Defender
+Turns played: 11
+
+    0   1   2   3   4  
+A:  .  dA7 dF3 aP5  .  
+B: dT9 dP7  .   .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #11 
+Player Defender 
+Move from A2 to A3 - dF2 attacks aP4
+Elapsed time: 1.0s 
+Heuristic Score: 10002 
+Cummulative eval = 233074 
+Evals per depth: 1:15956, 2:2426, 3:293, 4:44, 5:4, 6:3, 7:1, 
+Cumulative % evals by depth: 1: 85%, 2: 13%, 3: 2%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 750
+New configuration of the board:
+Next player: Attacker
+Turns played: 12
+
+    0   1   2   3   4  
+A:  .  dA7 dF2 aP4  .  
+B: dT9 dP7  .   .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #12 
+Player Attacker 
+Move from A3 to A2 - aP3 attacks dF1
+Elapsed time: 1.0s 
+Heuristic Score: 10002 
+Cummulative eval = 252459 
+Evals per depth: 1:16935, 2:2061, 3:318, 4:38, 5:7, 6:1, 7:3, 
+Cumulative % evals by depth: 1: 87%, 2: 11%, 3: 2%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 775
+New configuration of the board:
+Next player: Defender
+Turns played: 13
+
+    0   1   2   3   4  
+A:  .  dA7 dF1 aP3  .  
+B: dT9 dP7  .   .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #13 
+Player Defender 
+Move from A2 to A3 - dF0 attacks aP2
+Elapsed time: 1.0s 
+Heuristic Score: 10002 
+Cummulative eval = 271419 
+Evals per depth: 1:15955, 2:2618, 3:299, 4:55, 5:7, 6:1, 7:1, 
+Cumulative % evals by depth: 1: 84%, 2: 14%, 3: 2%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 758
+New configuration of the board:
+Next player: Attacker
+Turns played: 14
+
+    0   1   2   3   4  
+A:  .  dA7  .  aP2  .  
+B: dT9 dP7  .   .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #14 
+Player Attacker 
+Move from A3 to A2
+Elapsed time: 1.0s 
+Heuristic Score: 10002 
+Cummulative eval = 290318 
+Evals per depth: 1:16531, 2:1982, 3:317, 4:36, 5:7, 6:1, 7:1, 
+Cumulative % evals by depth: 1: 87%, 2: 10%, 3: 2%, 4: 0%, 5: 0%, 6: 0%, 7: 0%, Average Branching: 756
+New configuration of the board:
+Next player: Defender
+Turns played: 15
+
+    0   1   2   3   4  
+A:  .  dA7 aP2  .   .  
+B: dT9 dP7  .   .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+Turn #15 
+Player Defender 
+Move from A1 to A2 - dA4 attacks aP0
+Elapsed time: 1.0s 
+Heuristic Score: 10002 

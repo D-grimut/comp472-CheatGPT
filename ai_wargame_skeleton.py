@@ -254,7 +254,7 @@ class Options:
     dim: int = 5
     max_depth: int | None = 25
     min_depth: int | None = 2
-    max_time: float | None = 0.1
+    max_time: float | None = 1
     game_type: GameType = GameType.AttackerVsDefender
     alpha_beta: bool | None = False
     max_turns: int | None = 100
@@ -459,7 +459,7 @@ class Game:
                 entity.mod_health(-2)
 
                 if entity.health <= 0:
-                    self.remove_dead(src)
+                    self.remove_dead(place)
 
         # Remove the self destructed unit
         suicide_unit.health = 0
@@ -706,7 +706,7 @@ class Game:
             return e2_heuristic(self)
 
     def minimax(self, depth: int, is_maxiPlayer: bool, start_time) -> (int, CoordPair):
-        if (depth == 0 or datetime.now() > start_time + timedelta(seconds=self.options.max_time)):
+        if (depth == 0 or self.is_finished() or datetime.now() > start_time + timedelta(seconds=self.options.max_time)):
             if is_maxiPlayer:
                 return self.heuristic_type_attacker(), None
 
@@ -758,7 +758,7 @@ class Game:
             return min_eval, optimal_move
 
     def minimax_alpha_beta( self, depth: int, is_maxiPlayer: bool, alpha: int, beta: int, start_time, ) -> (int, CoordPair):
-        if (depth == 0 or datetime.now() > start_time + timedelta(seconds=self.options.max_time)):
+        if (depth == 0 or self.is_finished() or  datetime.now() > start_time + timedelta(seconds=self.options.max_time)):
             if is_maxiPlayer:
                 return self.heuristic_type_attacker(), None
 
@@ -1004,6 +1004,7 @@ def main():
         "------------------------------------------------------------------------------"
     )
 
+    score = "n/a"
     # the main game loop
     while True:
         print()
@@ -1059,6 +1060,9 @@ def main():
 
         total_nodes = sum(game.stats.evaluations_per_depth.values())
         max_depth = len(game.stats.evaluations_per_depth)
+
+        if max_depth == 0:
+            max_depth = 1
         
         f.write(f"Average Branching: {round(total_nodes / max_depth)}\n")
 
