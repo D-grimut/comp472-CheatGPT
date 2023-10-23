@@ -953,7 +953,7 @@ def main():
     elif args.game_type == "defender":
         game_type = GameType.CompVsDefender
     elif args.game_type == "manual":
-        game_type = GameType.CompVsComp
+        game_type = GameType.AttackerVsDefender
     else:
         game_type = GameType.CompVsComp
 
